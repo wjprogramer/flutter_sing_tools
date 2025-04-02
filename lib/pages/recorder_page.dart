@@ -1,6 +1,6 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_sing_tools/extensions/extensions.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -15,17 +15,20 @@ class RecorderPage extends StatefulWidget {
 }
 
 class _RecorderPageState extends State<RecorderPage> {
+  /// 是否在錄音完成後立即播放
+  bool _playImmediatelyAfterRecord = true;
+
   @override
   void initState() {
     _mPlayer!.openPlayer().then((value) {
-      setState(() {
+      safeSetState(() {
         _mPlayerIsInited = true;
       });
     });
 
     openTheRecorder().then((value) {
-      setState(() {
-        _mRecorderIsInited = true;
+      safeSetState(() {
+        _mRecorderIsInitialized = true;
       });
     });
     super.initState();
@@ -43,9 +46,9 @@ class _RecorderPageState extends State<RecorderPage> {
 
   // ------------------------------ This is the recorder stuff -----------------------------
 
-  Codec _codec = Codec.aacMP4;
-  String _mPath = 'tau_file.mp4';
-  bool _mRecorderIsInited = false;
+  final Codec _codec = Codec.aacMP4;
+  final String _mPath = 'tau_file.mp4';
+  bool _mRecorderIsInitialized = false;
 
   /// Our player
   FlutterSoundPlayer? _mPlayer = FlutterSoundPlayer();
@@ -55,82 +58,68 @@ class _RecorderPageState extends State<RecorderPage> {
 
   /// Request permission to record something and open the recorder
   Future<void> openTheRecorder() async {
-    if (!kIsWeb) {
-      var status = await Permission.microphone.request();
-      if (status != PermissionStatus.granted) {
-        throw RecordingPermissionException('Microphone permission not granted');
-      }
+    var status = await Permission.microphone.request();
+    if (status != PermissionStatus.granted) {
+      throw RecordingPermissionException('Microphone permission not granted');
     }
     await _mRecorder!.openRecorder();
-    if (!await _mRecorder!.isEncoderSupported(_codec) && kIsWeb) {
-      _codec = Codec.opusWebM;
-      _mPath = 'tau_file.webm';
-      if (!await _mRecorder!.isEncoderSupported(_codec) && kIsWeb) {
-        _mRecorderIsInited = true;
-        return;
-      }
-    }
-    _mRecorderIsInited = true;
+    _mRecorderIsInitialized = true;
   }
 
   /// Begin to record.
   /// This is our main function.
   /// We ask Flutter Sound to record to a File.
-  void record() {
-    _mRecorder!
-        .startRecorder(
+  Future<void> record() async {
+    await _mRecorder!.startRecorder(
       toFile: _mPath,
       codec: _codec,
       audioSource: theSource,
-    )
-        .then((value) {
-      setState(() {});
-    });
+    );
+    safeSetState();
   }
 
   /// Stop the recorder
   void stopRecorder() async {
-    await _mRecorder!.stopRecorder().then((value) {
-      setState(() {
-        //var url = value;
-        _mplaybackReady = true;
-      });
-    });
+    await _mRecorder!.stopRecorder();
+    //var url = value;
+    _mplaybackReady = true;
+    if (_playImmediatelyAfterRecord) {
+      await play();
+    }
+    safeSetState();
   }
 
 // ----------------------------- This is the player stuff ---------------------------------
 
   bool _mplaybackReady = false;
   bool _mPlayerIsInited = false;
+  Duration? _playerDuration;
 
   /// Begin to play the recorded sound
-  void play() {
+  Future<void> play() async {
     assert(_mPlayerIsInited &&
         _mplaybackReady &&
         _mRecorder!.isStopped &&
         _mPlayer!.isStopped);
-    _mPlayer!
-        .startPlayer(
-        fromURI: _mPath,
-        whenFinished: () {
-          setState(() {});
-        })
-        .then((value) {
-      setState(() {});
-    });
+    _playerDuration = await _mPlayer!.startPlayer(
+      fromURI: _mPath,
+      whenFinished: () {
+        safeSetState();
+      },
+    );
+    safeSetState();
   }
 
   /// Stop the player
-  void stopPlayer() {
-    _mPlayer!.stopPlayer().then((value) {
-      setState(() {});
-    });
+  void stopPlayer() async {
+    await _mPlayer!.stopPlayer();
+    safeSetState();
   }
 
 // ----------------------------- UI --------------------------------------------
 
   VoidCallback? getRecorderFn() {
-    if (!_mRecorderIsInited || !_mPlayer!.isStopped) {
+    if (!_mRecorderIsInitialized || !_mPlayer!.isStopped) {
       return null;
     }
     return _mRecorder!.isStopped ? record : stopRecorder;
@@ -143,77 +132,109 @@ class _RecorderPageState extends State<RecorderPage> {
     return _mPlayer!.isStopped ? play : stopPlayer;
   }
 
+  String _getStatusText() {
+    if (_mRecorder!.isRecording) {
+      return 'Recording';
+    } else if (_mPlayer!.isPlaying) {
+      return 'Playing';
+    } else {
+      return 'Stopped';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    Widget makeBody() {
-      return Column(
-        children: [
-          Container(
-            margin: const EdgeInsets.all(3),
-            padding: const EdgeInsets.all(3),
-            height: 80,
-            width: double.infinity,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFAF0E6),
-              border: Border.all(
-                color: Colors.indigo,
-                width: 3,
-              ),
-            ),
-            child: Row(children: [
-              ElevatedButton(
-                onPressed: getRecorderFn(),
-                //color: Colors.white,
-                //disabledColor: Colors.grey,
-                child: Text(_mRecorder!.isRecording ? 'Stop' : 'Record'),
-              ),
-              const SizedBox(
-                width: 20,
-              ),
-              Text(_mRecorder!.isRecording
-                  ? 'Recording in progress'
-                  : 'Recorder is stopped'),
-            ]),
-          ),
-          Container(
-            margin: const EdgeInsets.all(3),
-            padding: const EdgeInsets.all(3),
-            height: 80,
-            width: double.infinity,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFAF0E6),
-              border: Border.all(
-                color: Colors.indigo,
-                width: 3,
-              ),
-            ),
-            child: Row(children: [
-              ElevatedButton(
-                onPressed: getPlaybackFn(),
-                //color: Colors.white,
-                //disabledColor: Colors.grey,
-                child: Text(_mPlayer!.isPlaying ? 'Stop' : 'Play'),
-              ),
-              const SizedBox(
-                width: 20,
-              ),
-              Text(_mPlayer!.isPlaying
-                  ? 'Playback in progress'
-                  : 'Player is stopped'),
-            ]),
-          ),
-        ],
-      );
-    }
+    final theme = Theme.of(context);
+    final recorderFn = getRecorderFn();
+    final playbackFn = getPlaybackFn();
 
     return Scaffold(
-      backgroundColor: Colors.blue,
       appBar: AppBar(
-        title: const Text('Simple Recorder'),
+        title: const Text('錄音'),
       ),
-      body: makeBody(),
+      body: Column(
+        children: [
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: Divider.createBorderSide(context),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        _getStatusText(),
+                        style: theme.textTheme.headlineLarge,
+                      ),
+                    ),
+                  ),
+                  SwitchListTile(
+                    value: _playImmediatelyAfterRecord,
+                    onChanged: (v) {
+                      setState(() {
+                        _playImmediatelyAfterRecord = v;
+                      });
+                    },
+                    title: Text('Play immediately after record', maxLines: 2),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          IntrinsicHeight(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 32),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          onPressed: recorderFn,
+                          icon: Icon(
+                            _mRecorder!.isRecording ? Icons.stop : Icons.mic,
+                            size: 40,
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: recorderFn,
+                          child: Text(_mRecorder!.isRecording ? 'Stop' : 'Record'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                VerticalDivider(),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 32),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          onPressed: playbackFn,
+                          icon: Icon(
+                            _mPlayer!.isPlaying ? Icons.pause : Icons.play_arrow,
+                            size: 40,
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: playbackFn,
+                          child: Text(_mPlayer!.isPlaying ? 'Stop' : 'Play'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -39,11 +39,11 @@ class MyHomePage extends StatelessWidget {
         children: [
           MyTitle('重播'),
           MyButton(
-            text: '即時重播',
+            text: '錄音',
             page: RecorderPage(),
           ),
           MyButton(
-            text: '錄音',
+            text: '即時重播',
             page: MonitorPlaybackPage(),
           ),
         ],
