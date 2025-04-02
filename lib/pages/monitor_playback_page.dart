@@ -2,63 +2,20 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_sing_tools/utilities/utilities.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-// 模擬播放：你可以改成接 Native 播放（如透過 Platform Channel 傳 buffer）
-void simulatePlayback(Uint8List buffer) {
-  // ⚠️ 此處應使用 Native Plugin 播放 raw PCM buffer
-  print("Simulated playback of ${buffer.length} bytes");
-}
-
-/// 播放器：呼叫原生 Android 播放 PCM buffer
-class RealTimeAudioPlayer {
-  static const MethodChannel _channel = MethodChannel('real_time_audio');
-
-  static Future<void> write(Uint8List buffer) async {
-    try {
-      await _channel.invokeMethod('write', buffer);
-    } catch (e) {
-      debugPrint("[AudioPlayer] Failed to write buffer: \$e");
-    }
-  }
-
-  static Future<List<Map<Object?, Object?>>> getInputDevices() async {
-    final List devices = await _channel.invokeMethod('getInputDevices');
-    return List<Map<Object?, Object?>>.from(devices);
-  }
-
-  static Future<List<Map<Object?, Object?>>> getOutputDevices() async {
-    final List devices = await _channel.invokeMethod('getOutputDevices');
-    return List<Map<Object?, Object?>>.from(devices);
-  }
-
-  static Future<void> setInputDevice(int deviceId) async {
-    try {
-      await _channel.invokeMethod('setInputDevice', {'id': deviceId});
-    } catch (e) {
-      debugPrint("[AudioPlayer] Failed to set input device: \$e");
-    }
-  }
-
-  static Future<void> setOutputDevice(int deviceId) async {
-    try {
-      await _channel.invokeMethod('setOutputDevice', {'id': deviceId});
-    } catch (e) {
-      debugPrint("[AudioPlayer] Failed to set output device: \$e");
-    }
-  }
-}
-
+/// real-time monitoring / monitoring playback
 /// FIXME: 被註解的 Code，切換輸入輸出裝置會導致沒辦法繼續播放
-class RealTimePlaybackDemo extends StatefulWidget {
-  const RealTimePlaybackDemo({super.key});
+class MonitorPlaybackPage extends StatefulWidget {
+  const MonitorPlaybackPage({super.key});
 
   @override
-  State<RealTimePlaybackDemo> createState() => _RealTimePlaybackDemoState();
+  State<MonitorPlaybackPage> createState() => _MonitorPlaybackPageState();
 }
 
-class _RealTimePlaybackDemoState extends State<RealTimePlaybackDemo> {
+class _MonitorPlaybackPageState extends State<MonitorPlaybackPage> {
   FlutterSoundRecorder _recorder = FlutterSoundRecorder();
   bool _isRecording = false;
   StreamSubscription? _audioSub;
@@ -72,8 +29,12 @@ class _RealTimePlaybackDemoState extends State<RealTimePlaybackDemo> {
   @override
   void initState() {
     super.initState();
-    _initRecorder();
     _loadAudioDevices();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _initRecorder();
+      await startRecording();
+    });
   }
 
   Future<void> _loadAudioDevices() async {
@@ -164,8 +125,10 @@ class _RealTimePlaybackDemoState extends State<RealTimePlaybackDemo> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('即時回放 demo')),
+      appBar: AppBar(title: const Text('即時重播')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -180,9 +143,22 @@ class _RealTimePlaybackDemoState extends State<RealTimePlaybackDemo> {
             //   await _onAfterChangeDevice();
             // }),
             // const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _isRecording ? stopRecording : startRecording,
-              child: Text(_isRecording ? '停止錄音' : '開始錄音'),
+            Text('🎧 使用耳機是必要的，為了避免「聲音從喇叭播出 → 再被麥克風收音 → 產生回音與疊音」，建議用耳機監聽'),
+            // Expanded(
+            //   child: Center(
+            //     child: ElevatedButton(
+            //       onPressed: _isRecording ? stopRecording : startRecording,
+            //       child: Text(_isRecording ? '停止錄音' : '開始錄音'),
+            //     ),
+            //   ),
+            // ),
+            Expanded(
+              child: Center(
+                child: Text(
+                  '錄音中',
+                  style: theme.textTheme.headlineLarge,
+                ),
+              ),
             ),
           ],
         ),

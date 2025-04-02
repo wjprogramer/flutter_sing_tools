@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_sing_tools/test_pages/flutter_sound/record_to_stream_example.dart';
+import 'package:flutter_sing_tools/pages/monitor_playback_page.dart';
+import 'package:flutter_sing_tools/pages/recorder_page.dart';
 
 import 'widgets/widgets.dart';
 
@@ -30,11 +31,20 @@ class MyHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: Text('Singer'),
+      ),
       body: ListView(
+        padding: const EdgeInsets.all(16),
         children: [
+          MyTitle('重播'),
           MyButton(
-            text: 'flutter_sound / 即時播放',
-            page: RealTimePlaybackDemo(),
+            text: '即時重播',
+            page: RecorderPage(),
+          ),
+          MyButton(
+            text: '錄音',
+            page: MonitorPlaybackPage(),
           ),
         ],
       ),
