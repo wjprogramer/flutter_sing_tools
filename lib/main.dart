@@ -33,8 +33,8 @@ class MyHomePage extends StatelessWidget {
       body: ListView(
         children: [
           MyButton(
-            text: 'flutter_sound / record to stream',
-            page: RecordToStreamExample(),
+            text: 'flutter_sound / 即時播放',
+            page: RealTimePlaybackDemo(),
           ),
         ],
       ),
