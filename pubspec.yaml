@@ -32,6 +32,18 @@ dependencies:
     sdk: flutter
 
 
+  # Android iOS Linux
+  # flutter_audio_capture: ^1.1.8
+
+  # Android iOS web
+  flutter_sound: ^9.28.0
+
+  # Android iOS web Windows
+  permission_handler: ^11.4.0
+
+  # Android iOS Linux macOS Windows
+  path_provider: ^2.1.5
+
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
