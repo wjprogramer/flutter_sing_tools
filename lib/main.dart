@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_sing_tools/pages/monitor_playback_page.dart';
 import 'package:flutter_sing_tools/pages/recorder_page.dart';
+import 'package:flutter_sing_tools/pages/volume_detect_page.dart';
 
 import 'widgets/widgets.dart';
 
@@ -37,6 +38,15 @@ class MyHomePage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          MyTitle('一般'),
+          MyButton(
+            text: '音量偵測',
+            page: VolumeDetectPage(
+              onStop: (path) {
+                print('Recorded file path: $path');
+              },
+            ),
+          ),
           MyTitle('重播'),
           MyButton(
             text: '錄音',
