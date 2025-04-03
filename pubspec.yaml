@@ -48,6 +48,7 @@ dependencies:
   path_provider: ^2.1.5
 
   # Android iOS Linux macOS web Windows
+  fl_chart: ^0.70.2
   record: ^6.0.0
 
   # The following adds the Cupertino Icons font to your application.

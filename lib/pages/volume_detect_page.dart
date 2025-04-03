@@ -1,9 +1,19 @@
 import 'dart:async';
+import 'dart:math' as math;
 
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:record/record.dart';
 import 'package:flutter_sing_tools/utilities/audio_recorder/audio_recorder_io.dart';
+
+const double _maxVolume = 120;
+
+const Duration _graphSampleDuration = Duration(milliseconds: 200);
+
+const Duration _graphBottomIntervalDuration = Duration(seconds: 5);
+
+const int _maxGraphCount = 200;
 
 /// Ref:
 /// - https://gist.github.com/martusheff/57e321a31c2acb9154b5b5f4394c64e7
@@ -21,15 +31,17 @@ class VolumeDetectPage extends StatefulWidget {
 }
 
 class _VolumeDetectPageState extends State<VolumeDetectPage> with AudioRecorderMixin {
-  int _recordDuration = 0;
+  int _recordDurationInMilliseconds = 0;
   Timer? _timer;
   late final AudioRecorder _audioRecorder;
   StreamSubscription<RecordState>? _recordSub;
   RecordState _recordState = RecordState.stop;
   StreamSubscription<Amplitude>? _amplitudeSub;
   Amplitude? _amplitude;
-  double volume = 0.0;
+  double _volume = 0.0;
   double minVolume = -45.0;
+  List<FlSpot> _volumePoints = [];
+  int _elapsedMilliseconds = 0;
 
   @override
   void initState() {
@@ -43,16 +55,16 @@ class _VolumeDetectPageState extends State<VolumeDetectPage> with AudioRecorderM
         .onAmplitudeChanged(const Duration(milliseconds: 300))
         .listen((amp) {
       _amplitude = amp;
-      if (amp.current > minVolume) {
-        volume = (amp.current - minVolume) / minVolume;
-      }
+      // if (amp.current > minVolume) {
+      _volume = (amp.current - minVolume) / minVolume;
+      // }
       setState(() {});
     });
 
     super.initState();
   }
 
-  int volume0to(int maxVolumeToDisplay) {
+  int volume0to(double volume, int maxVolumeToDisplay) {
     return (volume * maxVolumeToDisplay).round().abs();
   }
 
@@ -76,7 +88,7 @@ class _VolumeDetectPageState extends State<VolumeDetectPage> with AudioRecorderM
         // Record to stream
         // await recordStream(_audioRecorder, config);
 
-        _recordDuration = 0;
+        _recordDurationInMilliseconds = 0;
 
         _startTimer();
       }
@@ -113,7 +125,7 @@ class _VolumeDetectPageState extends State<VolumeDetectPage> with AudioRecorderM
         break;
       case RecordState.stop:
         _timer?.cancel();
-        _recordDuration = 0;
+        _recordDurationInMilliseconds = 0;
         break;
     }
   }
@@ -139,6 +151,9 @@ class _VolumeDetectPageState extends State<VolumeDetectPage> with AudioRecorderM
 
   @override
   Widget build(BuildContext context) {
+    final bottomInterval = _graphBottomIntervalDuration.inMilliseconds ~/ _graphSampleDuration.inMilliseconds;
+    // print('${_graphBottomIntervalDuration.inMilliseconds}, ${_graphSampleDuration.inMilliseconds}, $bottomInterval');
+
     return MaterialApp(
       home: Scaffold(
         body: Column(
@@ -157,8 +172,73 @@ class _VolumeDetectPageState extends State<VolumeDetectPage> with AudioRecorderM
             if (_amplitude != null) ...[
               const SizedBox(height: 40),
               Text('Current: ${_amplitude?.current ?? 0.0}'),
-              Text('Volume: ${volume0to(100)}'),
+              Text('Volume: ${volume0to(_volume, 100)}'),
               Text('Max: ${_amplitude?.max ?? 0.0}'),
+              if (_volumePoints.isNotEmpty) ...[
+                const SizedBox(height: 32),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: SizedBox(
+                    height: 200,
+                    child: LineChart(
+                      LineChartData(
+                        minX: _volumePoints.firstOrNull?.x ?? 0,
+                        maxX: math.max(
+                          (_volumePoints.lastOrNull?.x ?? 0) + 5,
+                          _maxGraphCount.toDouble(),
+                        ),
+                        minY: 0,
+                        maxY: _maxVolume,
+                        lineBarsData: [
+                          LineChartBarData(
+                            spots: _volumePoints,
+                            isCurved: true,
+                            // colors: [Colors.blue],
+                            belowBarData: BarAreaData(show: false),
+                            dotData: FlDotData(show: false),
+                          ),
+                        ],
+                        titlesData: FlTitlesData(
+                          leftTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              reservedSize: 28,
+                              interval: 30,
+                              getTitlesWidget: (value, _) {
+                                return Text(
+                                  value.round().toString(),
+                                  style: const TextStyle(fontSize: 10),
+                                );
+                              },
+                            ),
+                          ),
+                          topTitles: AxisTitles(),
+                          rightTitles: AxisTitles(),
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              interval: bottomInterval.toDouble(),
+                              getTitlesWidget: (value, _) {
+                                final seconds = (value * _graphSampleDuration.inMilliseconds) ~/ 1000;
+                                return Text(
+                                  '${seconds}s',
+                                  style: const TextStyle(fontSize: 10),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                        gridData: FlGridData(
+                          show: true,
+                        ),
+                        borderData: FlBorderData(show: true),
+                      ),
+                      // 因為會清除過舊的資料，會導致畫面上同樣位置的線條跳動
+                      duration: Duration(milliseconds: 0),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ],
         ),
@@ -240,8 +320,8 @@ class _VolumeDetectPageState extends State<VolumeDetectPage> with AudioRecorderM
   }
 
   Widget _buildTimer() {
-    final String minutes = _formatNumber(_recordDuration ~/ 60);
-    final String seconds = _formatNumber(_recordDuration % 60);
+    final String minutes = _formatNumber(_recordDurationInMilliseconds ~/ 60);
+    final String seconds = _formatNumber(_recordDurationInMilliseconds % 60);
 
     return Text(
       '$minutes : $seconds',
@@ -261,8 +341,19 @@ class _VolumeDetectPageState extends State<VolumeDetectPage> with AudioRecorderM
   void _startTimer() {
     _timer?.cancel();
 
-    _timer = Timer.periodic(const Duration(seconds: 1), (Timer t) {
-      setState(() => _recordDuration++);
+    _timer = Timer.periodic(_graphSampleDuration, (Timer t) {
+      setState(() {
+        _recordDurationInMilliseconds += _graphSampleDuration.inMilliseconds;
+        _elapsedMilliseconds += _graphSampleDuration.inMilliseconds;
+        _volumePoints.add(FlSpot(
+          _elapsedMilliseconds / _graphSampleDuration.inMilliseconds,
+          volume0to(_volume, 100).clamp(0.0, _maxVolume).toDouble(), // 確保在合法範圍
+        ));
+        final int skip = _volumePoints.length - _maxGraphCount;
+        if (skip > 0) {
+          _volumePoints.removeRange(0, skip);
+        }
+      });
     });
   }
 }
