@@ -20,7 +20,9 @@ class FilesExplorerPageBloc extends Bloc<FilesExplorerPageEvent, FilesExplorerPa
     try {
       emit(FilesExplorerPageLoading());
 
-      final targetDir = event.directory ?? MyFileUtility.getApplicationDirectory();
+      final currentState = state;
+      final currentDir = currentState is FilesExplorerPageLoaded ? currentState.currentDir : null;
+      final targetDir = event.directory ?? currentDir ?? MyFileUtility.getApplicationDirectory();
       final files = await targetDir.list().toList();
 
       emit(FilesExplorerPageLoaded(

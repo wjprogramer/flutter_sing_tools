@@ -15,6 +15,12 @@ class MyFileUtility {
   static Future<void> init() async {
     _tempDir = MyDirectory.from(await path_provider.getTemporaryDirectory());
     _appDir = MyDirectory.from(await path_provider.getApplicationDocumentsDirectory());
+
+    (await getAudioDirectory()).create(recursive: true);
+  }
+
+  static MyDirectory getTemporaryDirectory() {
+    return _tempDir;
   }
 
   static MyDirectory getApplicationDirectory() {
