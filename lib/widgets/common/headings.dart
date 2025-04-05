@@ -7,6 +7,11 @@ class MyTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(text);
+    return Padding(
+      padding: const EdgeInsets.only(
+        top: 16, bottom: 8,
+      ),
+      child: Text(text),
+    );
   }
 }

@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_sing_tools/extensions/extensions.dart';
+import 'package:flutter_sing_tools/utilities/utilities.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:path/path.dart' as path_pkg;
 
 const theSource = AudioSource.microphone;
 
@@ -86,7 +89,18 @@ class _RecorderPageState extends State<RecorderPage> {
     if (_playImmediatelyAfterRecord) {
       await play();
     }
+    x();
     safeSetState();
+  }
+
+  void x() async {
+    // final tmpFolder = await MyFileUtility.getTemporaryDirectory();
+    // final filePath = path_pkg.join(tmpFolder.path, _mPath);
+    // print('===> exist ${File(filePath).existsSync()}');
+    //
+    // final newFile = await MyFileUtility.buildAudioFilePath('new_file.mp4')
+    //   ..createSync();
+    // await File(filePath).copy(newFile.path);
   }
 
 // ----------------------------- This is the player stuff ---------------------------------

@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_sing_tools/pages/monitor_playback_page.dart';
-import 'package:flutter_sing_tools/pages/recorder_page.dart';
-import 'package:flutter_sing_tools/pages/volume_detect_page.dart';
+import 'package:flutter_sing_tools/pages/splash_page.dart';
 
-import 'widgets/widgets.dart';
-
-void main() {
+void main() async {
   runApp(const MyApp());
 }
 
@@ -21,43 +17,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const MyHomePage(),
-    );
-  }
-}
-
-class MyHomePage extends StatelessWidget {
-  const MyHomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Singer'),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          MyTitle('一般'),
-          MyButton(
-            text: '音量偵測',
-            page: VolumeDetectPage(
-              onStop: (path) {
-                print('Recorded file path: $path');
-              },
-            ),
-          ),
-          MyTitle('重播'),
-          MyButton(
-            text: '錄音',
-            page: RecorderPage(),
-          ),
-          MyButton(
-            text: '即時重播',
-            page: MonitorPlaybackPage(),
-          ),
-        ],
-      ),
+      home: SplashPage(),
     );
   }
 }

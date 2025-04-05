@@ -36,7 +36,7 @@ dependencies:
   # flutter_audio_capture: ^1.1.8
 
   # Android iOS
-  real_volume: ^1.0.9
+  # real_volume: ^1.0.9
 
   # Android iOS web
   flutter_sound: ^9.28.0
@@ -48,7 +48,11 @@ dependencies:
   path_provider: ^2.1.5
 
   # Android iOS Linux macOS web Windows
+  bloc: ^9.0.0
   fl_chart: ^0.70.2
+  flutter_bloc: ^9.1.0
+  gap: ^3.0.1
+  path: ^1.9.1
   record: ^6.0.0
 
   # The following adds the Cupertino Icons font to your application.
