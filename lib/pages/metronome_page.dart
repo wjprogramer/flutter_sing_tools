@@ -18,8 +18,10 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_sing_tools/extensions/widget.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 
+// TODO:
 class MetronomePage extends StatefulWidget {
   const MetronomePage({super.key});
 
@@ -67,9 +69,9 @@ class _MetronomePageState extends State<MetronomePage> {
         fromURI: _exampleAudioFilePathMP3,
         codec: Codec.mp3,
         whenFinished: () {
-          setState(() {});
+          safeSetState(() {});
         });
-    setState(() {});
+    safeSetState(() {});
   }
 
   /// Stop playing
@@ -94,8 +96,11 @@ class _MetronomePageState extends State<MetronomePage> {
 
   @override
   Widget build(BuildContext context) {
-    Widget makeBody() {
-      return Column(
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Simple Playback'),
+      ),
+      body: Column(
         children: [
           Container(
             margin: const EdgeInsets.all(3),
@@ -103,13 +108,6 @@ class _MetronomePageState extends State<MetronomePage> {
             height: 80,
             width: double.infinity,
             alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFAF0E6),
-              border: Border.all(
-                color: Colors.indigo,
-                width: 3,
-              ),
-            ),
             child: Row(children: [
               ElevatedButton(
                 onPressed: getPlaybackFn(),
@@ -126,15 +124,7 @@ class _MetronomePageState extends State<MetronomePage> {
             ]),
           ),
         ],
-      );
-    }
-
-    return Scaffold(
-      backgroundColor: Colors.blue,
-      appBar: AppBar(
-        title: const Text('Simple Playback'),
       ),
-      body: makeBody(),
     );
   }
 }

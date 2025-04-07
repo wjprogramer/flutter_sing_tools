@@ -1,13 +1,14 @@
 import 'dart:async';
 import 'dart:io';
+
+import 'package:path/path.dart' as path_pkg;
 import 'package:flutter/material.dart';
 import 'package:flutter_sing_tools/extensions/extensions.dart';
-import 'package:flutter_sing_tools/utilities/utilities.dart';
+import 'package:flutter_sing_tools/utilities/io/file_utility.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:path/path.dart' as path_pkg;
 
-const theSource = AudioSource.microphone;
+const _theSource = AudioSource.microphone;
 
 /// ref: flutter_sound/example/simple_recorder (commit: fba4b05e)
 class RecorderPage extends StatefulWidget {
@@ -21,30 +22,42 @@ class _RecorderPageState extends State<RecorderPage> {
   /// 是否在錄音完成後立即播放
   bool _playImmediatelyAfterRecord = true;
 
+  final _fileNameController = TextEditingController();
+
   @override
   void initState() {
-    _mPlayer!.openPlayer().then((value) {
-      safeSetState(() {
-        _mPlayerIsInited = true;
-      });
-    });
+    super.initState();
+    _initPlayer();
 
     openTheRecorder().then((value) {
       safeSetState(() {
         _mRecorderIsInitialized = true;
       });
     });
-    super.initState();
   }
 
   @override
   void dispose() {
-    _mPlayer!.closePlayer();
-    _mPlayer = null;
+    _mPlayer.closePlayer();
+    cancelPlayerSubscriptions();
 
     _mRecorder!.closeRecorder();
     _mRecorder = null;
     super.dispose();
+  }
+
+  Future<void> _initPlayer() async {
+    await _mPlayer.openPlayer();
+    _mPlayerSubscription = _mPlayer.onProgress!.listen((e) {
+      setState(() {
+        _playbackDisposition = e.position;
+        pos = e.position.inMilliseconds;
+      });
+    });
+
+    safeSetState(() {
+      _mPlayerIsInited = true;
+    });
   }
 
   // ------------------------------ This is the recorder stuff -----------------------------
@@ -54,7 +67,7 @@ class _RecorderPageState extends State<RecorderPage> {
   bool _mRecorderIsInitialized = false;
 
   /// Our player
-  FlutterSoundPlayer? _mPlayer = FlutterSoundPlayer();
+  final FlutterSoundPlayer _mPlayer = FlutterSoundPlayer();
 
   /// Our recorder
   FlutterSoundRecorder? _mRecorder = FlutterSoundRecorder();
@@ -76,7 +89,7 @@ class _RecorderPageState extends State<RecorderPage> {
     await _mRecorder!.startRecorder(
       toFile: _mPath,
       codec: _codec,
-      audioSource: theSource,
+      audioSource: _theSource,
     );
     safeSetState();
   }
@@ -85,37 +98,29 @@ class _RecorderPageState extends State<RecorderPage> {
   void stopRecorder() async {
     await _mRecorder!.stopRecorder();
     //var url = value;
-    _mplaybackReady = true;
+    _playbackReady = true;
     if (_playImmediatelyAfterRecord) {
-      await play();
+      await _play();
     }
-    x();
     safeSetState();
-  }
-
-  void x() async {
-    // final tmpFolder = MyFileUtility.getTemporaryDirectory();
-    // final filePath = path_pkg.join(tmpFolder.path, _mPath);
-    // print('===> exist ${File(filePath).existsSync()}');
-    //
-    // final newFile = await MyFileUtility.buildAudioFilePath('new_file.mp4')
-    //   ..createSync();
-    // await File(filePath).copy(newFile.path);
   }
 
 // ----------------------------- This is the player stuff ---------------------------------
 
-  bool _mplaybackReady = false;
+  bool _playbackReady = false;
   bool _mPlayerIsInited = false;
   Duration? _playerDuration;
+  Duration? _playbackDisposition;
+  StreamSubscription? _mPlayerSubscription;
+  int pos = 0;
 
   /// Begin to play the recorded sound
-  Future<void> play() async {
+  Future<void> _play() async {
     assert(_mPlayerIsInited &&
-        _mplaybackReady &&
+        _playbackReady &&
         _mRecorder!.isStopped &&
-        _mPlayer!.isStopped);
-    _playerDuration = await _mPlayer!.startPlayer(
+        _mPlayer.isStopped);
+    _playerDuration = await _mPlayer.startPlayer(
       fromURI: _mPath,
       whenFinished: () {
         safeSetState();
@@ -125,42 +130,98 @@ class _RecorderPageState extends State<RecorderPage> {
   }
 
   /// Stop the player
-  void stopPlayer() async {
-    await _mPlayer!.stopPlayer();
+  void _stopPlayer() async {
+    await _mPlayer.stopPlayer();
     safeSetState();
   }
 
-// ----------------------------- UI --------------------------------------------
+  void cancelPlayerSubscriptions() {
+    if (_mPlayerSubscription != null) {
+      _mPlayerSubscription!.cancel();
+      _mPlayerSubscription = null;
+    }
+  }
 
-  VoidCallback? getRecorderFn() {
-    if (!_mRecorderIsInitialized || !_mPlayer!.isStopped) {
+  // region Others
+
+  Future<void> _onSave() async {
+    try {
+      final tmpFolder = MyFileUtility.getTemporaryDirectory();
+      final filePath = path_pkg.join(tmpFolder.path, _mPath);
+
+      final fileName = _fileNameController.text;
+      final newFile = await MyFileUtility.buildAudioFilePath('$fileName.mp4')
+        ..createSync();
+      await File(filePath).copy(newFile.path);
+    } catch (e) {
+      _showDialog(
+        titleText: 'Error',
+        contentText: e.toString(),
+      );
+    }
+  }
+
+  void _showDialog({
+    String? titleText,
+    String? contentText,
+  }) {
+    callback() {
+      showDialog(
+        context: context,
+        builder: (_) {
+          return AlertDialog(
+            title: Text(titleText ?? ''),
+            content: contentText == null ? null : Text(
+              contentText,
+            ),
+          );
+        },
+      );
+    }
+
+    if (mounted) {
+      callback();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) => callback());
+    }
+  }
+
+  // endregion
+
+  // region UI
+
+  VoidCallback? _getRecorderFn() {
+    if (!_mRecorderIsInitialized || !_mPlayer.isStopped) {
       return null;
     }
     return _mRecorder!.isStopped ? record : stopRecorder;
   }
 
-  VoidCallback? getPlaybackFn() {
-    if (!_mPlayerIsInited || !_mplaybackReady || !_mRecorder!.isStopped) {
+  VoidCallback? _getPlaybackFn() {
+    if (!_mPlayerIsInited || !_playbackReady || !_mRecorder!.isStopped) {
       return null;
     }
-    return _mPlayer!.isStopped ? play : stopPlayer;
+    return _mPlayer.isStopped ? _play : _stopPlayer;
   }
 
   String _getStatusText() {
     if (_mRecorder!.isRecording) {
       return 'Recording';
-    } else if (_mPlayer!.isPlaying) {
+    } else if (_mPlayer.isPlaying) {
       return 'Playing';
     } else {
       return 'Stopped';
     }
   }
 
+  // endregion
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final recorderFn = getRecorderFn();
-    final playbackFn = getPlaybackFn();
+    final recorderFn = _getRecorderFn();
+    final playbackFn = _getPlaybackFn();
+    final playerDuration = _playerDuration;
 
     return Scaffold(
       appBar: AppBar(
@@ -178,21 +239,55 @@ class _RecorderPageState extends State<RecorderPage> {
               child: Column(
                 children: [
                   Expanded(
-                    child: Center(
-                      child: Text(
-                        _getStatusText(),
-                        style: theme.textTheme.headlineLarge,
-                      ),
+                    child: ListView(
+                      padding: const EdgeInsets.all(16.0),
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          child: Text(
+                            _getStatusText(),
+                            style: theme.textTheme.headlineLarge,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        if (_playbackReady) ...[
+                          if (playerDuration != null)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: Text('Duration: $playerDuration'),
+                            ), // ${_playbackDisposition}/
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _fileNameController,
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: _onSave,
+                                icon: Icon(Icons.save_outlined),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                  SwitchListTile(
-                    value: _playImmediatelyAfterRecord,
-                    onChanged: (v) {
-                      setState(() {
-                        _playImmediatelyAfterRecord = v;
-                      });
-                    },
-                    title: Text('Play immediately after record', maxLines: 2),
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border(
+                        top: Divider.createBorderSide(context),
+                      ),
+                    ),
+                    child: SwitchListTile(
+                      value: _playImmediatelyAfterRecord,
+                      onChanged: (v) {
+                        setState(() {
+                          _playImmediatelyAfterRecord = v;
+                        });
+                      },
+                      title: Text('Play immediately after record', maxLines: 2),
+                    ),
                   ),
                 ],
               ),
@@ -232,13 +327,13 @@ class _RecorderPageState extends State<RecorderPage> {
                         IconButton(
                           onPressed: playbackFn,
                           icon: Icon(
-                            _mPlayer!.isPlaying ? Icons.pause : Icons.play_arrow,
+                            _mPlayer.isPlaying ? Icons.pause : Icons.play_arrow,
                             size: 40,
                           ),
                         ),
                         ElevatedButton(
                           onPressed: playbackFn,
-                          child: Text(_mPlayer!.isPlaying ? 'Stop' : 'Play'),
+                          child: Text(_mPlayer.isPlaying ? 'Stop' : 'Play'),
                         ),
                       ],
                     ),

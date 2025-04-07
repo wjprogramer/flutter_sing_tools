@@ -9,7 +9,7 @@ class FilesExplorerPageLoad extends FilesExplorerPageEvent {
     this.directory,
   });
 
-  final Directory? directory;
+  final MyDirectory? directory;
 
   @override
   List<Object?> get props => [directory];

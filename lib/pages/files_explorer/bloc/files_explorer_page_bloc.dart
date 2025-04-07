@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:flutter_sing_tools/models/io/io.dart';
 import 'package:flutter_sing_tools/utilities/utilities.dart';
 
 part 'files_explorer_page_event.dart';
@@ -18,9 +19,9 @@ class FilesExplorerPageBloc extends Bloc<FilesExplorerPageEvent, FilesExplorerPa
 
   Future<void> _load(FilesExplorerPageLoad event, _Emitter emit) async {
     try {
+      final currentState = state;
       emit(FilesExplorerPageLoading());
 
-      final currentState = state;
       final currentDir = currentState is FilesExplorerPageLoaded ? currentState.currentDir : null;
       final targetDir = event.directory ?? currentDir ?? MyFileUtility.getApplicationDirectory();
       final files = await targetDir.list().toList();

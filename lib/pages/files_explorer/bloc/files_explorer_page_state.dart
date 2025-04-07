@@ -10,9 +10,9 @@ final class FilesExplorerPageLoaded extends FilesExplorerPageState {
     this.files = const [],
   });
 
-  final Directory? currentDir;
+  final MyDirectory? currentDir;
 
-  final List<FileSystemEntity> files;
+  final List<MyFileSystemEntity> files;
 
   @override
   List<Object?> get props => [];

@@ -27,13 +27,13 @@ class MyFileUtility {
     return _appDir;
   }
 
-  static Future<MyDirectory> getAudioDirectory() async {
+  static MyDirectory getAudioDirectory() {
     return MyDirectory(path_pkg.join(_appDir.path, _userAudioFolder));
   }
 
   /// [fileName] includes extension
   static Future<File> buildAudioFilePath(String fileName) async {
-    final dir = await getAudioDirectory();
+    final dir = getAudioDirectory();
     return File(path_pkg.join(dir.path, fileName));
   }
 

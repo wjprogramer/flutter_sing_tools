@@ -5,6 +5,15 @@ import 'package:flutter/cupertino.dart';
 sealed class MyFileSystemEntity<T extends FileSystemEntity> implements FileSystemEntity {
   MyFileSystemEntity._();
 
+  static MyFileSystemEntity from(FileSystemEntity entity) {
+    if (entity is File) {
+      return MyFile(entity.path);
+    } else if (entity is Directory) {
+      return MyDirectory.from(entity);
+    }
+    throw UnsupportedError('Unsupported FileSystemEntity type: ${entity.runtimeType}');
+  }
+
   @protected
   T get value;
 
@@ -36,7 +45,7 @@ sealed class MyFileSystemEntity<T extends FileSystemEntity> implements FileSyste
   bool get isAbsolute => value.isAbsolute;
 
   @override
-  Directory get parent => value.parent;
+  MyDirectory get parent => MyDirectory.from(value.parent);
 
   @override
   String get path => value.path;
@@ -147,8 +156,10 @@ class MyDirectory extends MyFileSystemEntity<Directory> implements Directory {
   }
 
   @override
-  Stream<FileSystemEntity> list({bool recursive = false, bool followLinks = true}) {
-    return value.list(recursive: recursive, followLinks: followLinks);
+  Stream<MyFileSystemEntity> list({bool recursive = false, bool followLinks = true}) {
+    return value
+        .list(recursive: recursive, followLinks: followLinks)
+        .map((e) => MyFileSystemEntity.from(e));
   }
 
   @override
