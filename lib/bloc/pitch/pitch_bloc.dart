@@ -7,17 +7,20 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pitch_detector_dart/pitch_detector.dart';
 import 'package:pitchupdart/pitch_handler.dart';
+import 'package:pitchupdart/pitch_result.dart';
 import 'package:pitchupdart/tuning_status.dart';
 import 'package:record/record.dart';
 
 part 'pitch_event.dart';
 part 'pitch_state.dart';
 
+/// 音高
 class PitchBloc extends Bloc<PitchEvent, PitchState> {
   PitchBloc(this._audioRecorder, this._pitchDetectorDart, this._pitchupDart) : super(PitchState.empty()) {
     _init();
 
-    on<PitchEvent>((event, emit) {
+    on<PitchEvent>((event, emit) => switch (event) {
+      PitchUpdate() => _onUpdate(event, emit),
     });
   }
 
@@ -53,10 +56,7 @@ class PitchBloc extends Bloc<PitchEvent, PitchState> {
       _pitchDetectorDart.getPitchFromIntBuffer(intBuffer).then((detectedPitch) {
         if (detectedPitch.pitched) {
           _pitchupDart.handlePitch(detectedPitch.pitch).then((pitchResult) {
-            return emit(PitchState(
-              note: pitchResult.note,
-              status: pitchResult.tuningStatus.getDescription(),
-            ));
+            return add(PitchUpdate(pitchResult));
           });
         }
       });
@@ -67,6 +67,14 @@ class PitchBloc extends Bloc<PitchEvent, PitchState> {
   Future<void> close() {
     _disposer?.call();
     return super.close();
+  }
+
+  void _onUpdate(PitchUpdate event, Emitter<PitchState> emit) {
+    emit(state.copyWith(
+      value: event.result,
+      note: event.result.note,
+      status: event.result.tuningStatus.getDescription(),
+    ));
   }
 }
 

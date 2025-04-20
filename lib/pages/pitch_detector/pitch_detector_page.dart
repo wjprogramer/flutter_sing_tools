@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_sing_tools/bloc/audio_recorder/audio_recorder_bloc.dart';
 import 'package:flutter_sing_tools/bloc/pitch/pitch_bloc.dart';
+import 'package:gap/gap.dart';
 import 'package:pitch_detector_dart/pitch_detector.dart';
 import 'package:pitchupdart/instrument_type.dart';
 import 'package:pitchupdart/pitch_handler.dart';
@@ -57,27 +58,60 @@ class _Page extends StatelessWidget {
         title: const Text("PitchUp sample- Guitar tuner"),
       ),
       body: Center(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.max,
-          children: [
-            Text(
-              pitchCubitState.note,
-              style: const TextStyle(
-                color: Colors.black87,
-                fontSize: 65.0,
-                fontWeight: FontWeight.bold,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.max,
+            children: [
+              Text(
+                pitchCubitState.note,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.black87,
+                  fontSize: 65.0,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            Text(
-              pitchCubitState.status,
-              style: const TextStyle(
-                color: Colors.black87,
-                fontSize: 18.0,
+              Text(
+                pitchCubitState.status,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.black87,
+                  fontSize: 18.0,
+                ),
               ),
-            ),
-          ],
+              Gap(16),
+              ...[
+                { 'key': 'expectedFrequency', 'value': pitchCubitState.expectedFrequency},
+                { 'key': 'diffFrequency', 'value': pitchCubitState.diffFrequency},
+                { 'key': 'diffCents', 'value': pitchCubitState.diffCents},
+              ].map((e) => Container(
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: Divider.createBorderSide(context),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        e['key'] as String,
+                        textAlign: TextAlign.start,
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        (e['value'] as double).toStringAsFixed(1),
+                        textAlign: TextAlign.end,
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+            ],
+          ),
         ),
       ),
     );
