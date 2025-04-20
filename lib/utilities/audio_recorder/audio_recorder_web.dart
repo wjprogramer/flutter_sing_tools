@@ -1,9 +1,8 @@
 import 'dart:js_interop';
 import 'dart:typed_data';
 
-import 'package:web/web.dart' as web;
-
 import 'package:record/record.dart';
+import 'package:web/web.dart' as web;
 
 mixin AudioRecorderMixin {
   Future<void> recordFile(AudioRecorder recorder, RecordConfig config) {

@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:path/path.dart' as path_pkg;
 import 'package:flutter/material.dart';
 import 'package:flutter_sing_tools/extensions/extensions.dart';
 import 'package:flutter_sing_tools/utilities/io/file_utility.dart';
 import 'package:flutter_sound/flutter_sound.dart';
+import 'package:path/path.dart' as path_pkg;
 import 'package:permission_handler/permission_handler.dart';
 
 const _theSource = AudioSource.microphone;

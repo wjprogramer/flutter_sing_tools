@@ -17,6 +17,7 @@
 // - 與錄音或音量偵測畫面同步顯示節拍
 
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_sing_tools/extensions/widget.dart';
 import 'package:flutter_sound/flutter_sound.dart';

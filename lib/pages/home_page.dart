@@ -29,11 +29,7 @@ class MyHomePage extends StatelessWidget {
           MyTitle('聲音檢測'),
           MyButton(
             text: '音量偵測',
-            page: VolumeDetectPage(
-              onStop: (path) {
-                print('Recorded file path: $path');
-              },
-            ),
+            page: VolumeDetectPage(),
           ),
           MyButton(
             text: '音高檢測',

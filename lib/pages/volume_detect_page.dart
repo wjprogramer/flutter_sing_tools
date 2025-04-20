@@ -2,10 +2,14 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:record/record.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_sing_tools/bloc/audio_recorder/widgets/status_listener.dart';
+import 'package:flutter_sing_tools/bloc/volume/volume_bloc.dart';
 import 'package:flutter_sing_tools/utilities/audio_recorder/audio_recorder_io.dart';
+import 'package:record/record.dart';
+
+import '../bloc/audio_recorder/audio_recorder_bloc.dart';
 
 const double _maxVolume = 120;
 
@@ -15,147 +19,143 @@ const Duration _graphBottomIntervalDuration = Duration(seconds: 5);
 
 const int _maxGraphCount = 200;
 
+class VolumeDetectPage extends StatelessWidget {
+  const VolumeDetectPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (context) => AudioRecorderBloc()),
+      ],
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider(create: (context) => VolumeBloc(
+            context.read<AudioRecorderBloc>().audioRecorder,
+          )),
+        ],
+        child: Builder(
+          builder: (context) {
+            final bloc = context.read<AudioRecorderBloc>();
+            final volumeBloc = context.read<VolumeBloc>();
+
+            return _VolumeDetectPage(
+              audioRecorderBloc: bloc,
+              volumeBloc: volumeBloc,
+            );
+          }
+        ),
+      ),
+    );
+  }
+}
+
 /// Ref:
 /// - https://gist.github.com/martusheff/57e321a31c2acb9154b5b5f4394c64e7
 /// - https://github.com/llfbandit/record , record/examples
-class VolumeDetectPage extends StatefulWidget {
-  const VolumeDetectPage({
-    super.key,
-    required this.onStop,
+class _VolumeDetectPage extends StatefulWidget {
+  const _VolumeDetectPage({
+    required this.audioRecorderBloc,
+    required this.volumeBloc,
   });
 
-  final void Function(String path) onStop;
+  final AudioRecorderBloc audioRecorderBloc;
+
+  final VolumeBloc volumeBloc;
 
   @override
-  State<VolumeDetectPage> createState() => _VolumeDetectPageState();
+  State<_VolumeDetectPage> createState() => _VolumeDetectPageState();
 }
 
-class _VolumeDetectPageState extends State<VolumeDetectPage> with AudioRecorderMixin {
-  int _recordDurationInMilliseconds = 0;
+class _VolumeDetectPageState extends State<_VolumeDetectPage> with AudioRecorderMixin {
+  AudioRecorderBloc get _recorderBloc => widget.audioRecorderBloc;
+  RecordState get _recordState => _recorderBloc.state.recordState;
+  AudioRecorder get _audioRecorder => _recorderBloc.audioRecorder;
+
+  VolumeBloc get _volumeBloc => widget.volumeBloc;
+  double get _volume => _volumeBloc.state.volume;
+
   Timer? _timer;
-  late final AudioRecorder _audioRecorder;
-  StreamSubscription<RecordState>? _recordSub;
-  RecordState _recordState = RecordState.stop;
-  StreamSubscription<Amplitude>? _amplitudeSub;
-  Amplitude? _amplitude;
-  double _volume = 0.0;
-  final double _minVolume = -45.0;
+  int _recordDurationInMilliseconds = 0;
   final List<FlSpot> _volumePoints = [];
   int _elapsedMilliseconds = 0;
 
   @override
-  void initState() {
-    _audioRecorder = AudioRecorder();
-
-    _recordSub = _audioRecorder.onStateChanged().listen((recordState) {
-      _updateRecordState(recordState);
-    });
-
-    _amplitudeSub = _audioRecorder
-        .onAmplitudeChanged(const Duration(milliseconds: 300))
-        .listen((amp) {
-      _amplitude = amp;
-      // if (amp.current > minVolume) {
-      _volume = (amp.current - _minVolume) / _minVolume;
-      // }
-      setState(() {});
-    });
-
-    super.initState();
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   int volume0to(double volume, int maxVolumeToDisplay) {
     return (volume * maxVolumeToDisplay).round().abs();
   }
 
-  Future<void> _start() async {
-    try {
-      if (await _audioRecorder.hasPermission()) {
-        const encoder = AudioEncoder.aacLc;
+  void _start() => _recorderBloc.add(AudioRecorderStart(
+    onPreStart: (config) async {
+      // Record to file
+      await recordFile(_audioRecorder, config);
 
-        if (!await _isEncoderSupported(encoder)) {
-          return;
-        }
+      _recordDurationInMilliseconds = 0;
 
-        final devs = await _audioRecorder.listInputDevices();
-        debugPrint(devs.toString());
+      // Record to stream
+      // await recordStream(_audioRecorder, config);
+    },
+  ));
 
-        const config = RecordConfig(encoder: encoder, numChannels: 1);
-
-        // Record to file
-        await recordFile(_audioRecorder, config);
-
-        // Record to stream
-        // await recordStream(_audioRecorder, config);
-
-        _recordDurationInMilliseconds = 0;
-
-        _startTimer();
+  void _stop() {
+    _recorderBloc.add(AudioRecorderStop(
+      onStop: (path) {
+        downloadWebData(path);
       }
-    } catch (e) {
-      if (kDebugMode) {
-        print(e);
-      }
-    }
+    ));
   }
 
-  Future<void> _stop() async {
-    final path = await _audioRecorder.stop();
+  void _pause() => _recorderBloc.add(const AudioRecorderPause());
 
-    if (path != null) {
-      widget.onStop(path);
+  void _resume() => _recorderBloc.add(const AudioRecorderResume());
 
-      downloadWebData(path);
-    }
-  }
+  void _startTimer() {
+    _timer?.cancel();
 
-  Future<void> _pause() => _audioRecorder.pause();
-
-  Future<void> _resume() => _audioRecorder.resume();
-
-  void _updateRecordState(RecordState recordState) {
-    setState(() => _recordState = recordState);
-
-    switch (recordState) {
-      case RecordState.pause:
-        _timer?.cancel();
-        break;
-      case RecordState.record:
-        _startTimer();
-        break;
-      case RecordState.stop:
-        _timer?.cancel();
-        _recordDurationInMilliseconds = 0;
-        break;
-    }
-  }
-
-  Future<bool> _isEncoderSupported(AudioEncoder encoder) async {
-    final isSupported = await _audioRecorder.isEncoderSupported(
-      encoder,
-    );
-
-    if (!isSupported) {
-      debugPrint('${encoder.name} is not supported on this platform.');
-      debugPrint('Supported encoders are:');
-
-      for (final e in AudioEncoder.values) {
-        if (await _audioRecorder.isEncoderSupported(e)) {
-          debugPrint('- ${e.name}');
-        }
+    _timer = Timer.periodic(_graphSampleDuration, (Timer t) {
+      _recordDurationInMilliseconds += _graphSampleDuration.inMilliseconds;
+      _elapsedMilliseconds += _graphSampleDuration.inMilliseconds;
+      _volumePoints.add(FlSpot(
+        _elapsedMilliseconds / _graphSampleDuration.inMilliseconds,
+        volume0to(_volume, 100).clamp(0.0, _maxVolume).toDouble(), // 確保在合法範圍
+      ));
+      final int skip = _volumePoints.length - _maxGraphCount;
+      if (skip > 0) {
+        _volumePoints.removeRange(0, skip);
       }
-    }
-
-    return isSupported;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final bottomInterval = _graphBottomIntervalDuration.inMilliseconds ~/ _graphSampleDuration.inMilliseconds;
-    // print('${_graphBottomIntervalDuration.inMilliseconds}, ${_graphSampleDuration.inMilliseconds}, $bottomInterval');
 
-    return MaterialApp(
-      home: Scaffold(
+    final volumeBloc = context.watch<VolumeBloc>();
+    final amplitude = volumeBloc.state.amplitude;
+    final volume = volumeBloc.state.volume;
+
+    return AudioRecorderStatusListener(
+      listener: (context, status) {
+        switch (status) {
+          case RecordState.pause:
+            _timer?.cancel();
+            break;
+          case RecordState.record:
+            _startTimer();
+            break;
+          case RecordState.stop:
+            _timer?.cancel();
+            _recordDurationInMilliseconds = 0;
+            break;
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(title: Text('Volume Detect')),
         body: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -169,11 +169,11 @@ class _VolumeDetectPageState extends State<VolumeDetectPage> with AudioRecorderM
                 _buildText(),
               ],
             ),
-            if (_amplitude != null) ...[
+            if (amplitude != null) ...[
               const SizedBox(height: 40),
-              Text('Current: ${_amplitude?.current ?? 0.0}'),
-              Text('Volume: ${volume0to(_volume, 100)}'),
-              Text('Max: ${_amplitude?.max ?? 0.0}'),
+              Text('Current: ${amplitude.current}'),
+              Text('Volume: ${volume0to(volume, 100)}'),
+              Text('Max: ${amplitude.max}'),
               if (_volumePoints.isNotEmpty) ...[
                 const SizedBox(height: 32),
                 Padding(
@@ -244,15 +244,6 @@ class _VolumeDetectPageState extends State<VolumeDetectPage> with AudioRecorderM
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _recordSub?.cancel();
-    _amplitudeSub?.cancel();
-    _audioRecorder.dispose();
-    super.dispose();
   }
 
   Widget _buildRecordStopControl() {
@@ -336,24 +327,5 @@ class _VolumeDetectPageState extends State<VolumeDetectPage> with AudioRecorderM
     }
 
     return numberStr;
-  }
-
-  void _startTimer() {
-    _timer?.cancel();
-
-    _timer = Timer.periodic(_graphSampleDuration, (Timer t) {
-      setState(() {
-        _recordDurationInMilliseconds += _graphSampleDuration.inMilliseconds;
-        _elapsedMilliseconds += _graphSampleDuration.inMilliseconds;
-        _volumePoints.add(FlSpot(
-          _elapsedMilliseconds / _graphSampleDuration.inMilliseconds,
-          volume0to(_volume, 100).clamp(0.0, _maxVolume).toDouble(), // 確保在合法範圍
-        ));
-        final int skip = _volumePoints.length - _maxGraphCount;
-        if (skip > 0) {
-          _volumePoints.removeRange(0, skip);
-        }
-      });
-    });
   }
 }
