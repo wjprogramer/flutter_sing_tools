@@ -1,7 +1,12 @@
+import 'package:bloc/bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_sing_tools/pages/splash_page.dart';
 
+import 'app/bloc_observer.dart';
+
 void main() async {
+  Bloc.observer = const MyBlocObserver();
+
   runApp(const MyApp());
 }
 

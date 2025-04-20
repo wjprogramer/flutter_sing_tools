@@ -45,8 +45,6 @@ class AudioRecorderBloc extends Bloc<AudioRecorderEvent, AudioRecorderState> {
   }
 
   void _update(AudioRecorderUpdate event, Emitter<AudioRecorderState> emit) {
-
-
     emit(state.copyWith(
       recordState: event.recordState,
     ));

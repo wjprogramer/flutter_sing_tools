@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter_sing_tools/bloc/pitch/pitch_bloc.dart';
 import 'package:flutter_sing_tools/utilities/formatter.dart';
 import 'package:flutter_sing_tools/widgets/audio/graph/audio_graph.dart';
 
@@ -66,7 +67,7 @@ class AudioGraphBloc extends Bloc<AudioGraphEvent, AudioGraphState> {
 
   void _update(AudioGraphUpdate event, Emitter<AudioGraphState> emit) {
     emit(state.copyWith(
-      volumePoints: _volumePoints,
+      volumePoints: event.volumePoints,
       recordDuration: event.recordDuration,
     ));
   }

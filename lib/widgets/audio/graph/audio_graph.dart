@@ -7,9 +7,9 @@ import 'package:flutter_sing_tools/bloc/volume/volume_bloc.dart';
 
 const Duration _graphBottomIntervalDuration = Duration(seconds: 5);
 
-const Duration _graphSampleDuration = Duration(milliseconds: 200);
+const Duration _graphSampleDuration = Duration(milliseconds: 5);
 
-const int _maxGraphCount = 200;
+const int _maxGraphCount = 1600;
 
 const double _maxVolume = 120;
 

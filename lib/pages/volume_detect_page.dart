@@ -122,50 +122,6 @@ class _VolumeDetectPageState extends State<_VolumeDetectPage>
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final volumeBloc = context.watch<VolumeBloc>();
-    final amplitude = volumeBloc.state.amplitude;
-    final volume = volumeBloc.state.volume;
-
-    final audioGraphBloc = context.watch<AudioGraphBloc>();
-    final volumePoints = audioGraphBloc.state.volumePoints;
-
-    return AudioRecorderStatusListener(
-      listener: _listenRecorderStatus,
-      child: Scaffold(
-        appBar: AppBar(title: Text('Volume Detect')),
-        body: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                _buildRecordStopControl(),
-                const SizedBox(width: 20),
-                _buildPauseResumeControl(),
-                const SizedBox(width: 20),
-                _buildText(),
-              ],
-            ),
-            if (amplitude != null) ...[
-              const SizedBox(height: 40),
-              Text('Current: ${amplitude.current}'),
-              Text('Volume: ${Formatter.volume0to(volume, 100)}'),
-              Text('Max: ${amplitude.max}'),
-              if (volumePoints.isNotEmpty) ...[
-                const SizedBox(height: 32),
-                AudioGraph(
-                  volumePoints: volumePoints,
-                ),
-              ],
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildRecordStopControl() {
     late Icon icon;
     late Color color;
@@ -232,5 +188,49 @@ class _VolumeDetectPageState extends State<_VolumeDetectPage>
     }
 
     return const Text("Waiting to record");
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final volumeBloc = context.watch<VolumeBloc>();
+    final amplitude = volumeBloc.state.amplitude;
+    final volume = volumeBloc.state.volume;
+
+    final audioGraphBloc = context.watch<AudioGraphBloc>();
+    final volumePoints = audioGraphBloc.state.volumePoints;
+
+    return AudioRecorderStatusListener(
+      listener: _listenRecorderStatus,
+      child: Scaffold(
+        appBar: AppBar(title: Text('Volume Detect')),
+        body: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                _buildRecordStopControl(),
+                const SizedBox(width: 20),
+                _buildPauseResumeControl(),
+                const SizedBox(width: 20),
+                _buildText(),
+              ],
+            ),
+            if (amplitude != null) ...[
+              const SizedBox(height: 40),
+              Text('Current: ${amplitude.current}'),
+              Text('Volume: ${Formatter.volume0to(volume, 100)}'),
+              Text('Max: ${amplitude.max}'),
+            ],
+            if (volumePoints.isNotEmpty) ...[
+              const SizedBox(height: 32),
+              AudioGraph(
+                volumePoints: volumePoints,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }

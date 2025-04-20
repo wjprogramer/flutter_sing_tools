@@ -46,11 +46,7 @@ class PitchBloc extends Bloc<PitchEvent, PitchState> {
       PitchDetector.DEFAULT_BUFFER_SIZE * 2,
     );
 
-    _disposer = () {
-      _audioRecorder.stop();
-    };
-
-    await for (var audioSample in audioSampleBufferedStream) {
+    final audioSampleBufferedStreamSubscription = audioSampleBufferedStream.listen((audioSample) {
       final intBuffer = Uint8List.fromList(audioSample);
 
       _pitchDetectorDart.getPitchFromIntBuffer(intBuffer).then((detectedPitch) {
@@ -60,7 +56,11 @@ class PitchBloc extends Bloc<PitchEvent, PitchState> {
           });
         }
       });
-    }
+    });
+
+    _disposer = () {
+      audioSampleBufferedStreamSubscription.cancel();
+    };
   }
 
   @override

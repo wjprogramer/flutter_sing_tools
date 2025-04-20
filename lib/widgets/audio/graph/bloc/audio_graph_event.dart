@@ -28,12 +28,18 @@ class AudioGraphUpdate extends AudioGraphEvent {
 class AudioGraphStartRecording extends AudioGraphEvent {
   const AudioGraphStartRecording({
     this.getLatestVolume,
+    this.getLatestPitchState,
   });
 
   final double Function()? getLatestVolume;
 
+  final PitchState Function()? getLatestPitchState;
+
   @override
-  List<Object> get props => [];
+  List<Object?> get props => [
+        getLatestVolume,
+        getLatestPitchState,
+      ];
 }
 
 class AudioGraphPause extends AudioGraphEvent {
