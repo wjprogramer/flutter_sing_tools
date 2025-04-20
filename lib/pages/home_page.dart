@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_sing_tools/pages/files_explorer/files_explorer_page.dart';
 import 'package:flutter_sing_tools/pages/metronome_page.dart';
 import 'package:flutter_sing_tools/pages/monitor_playback_page.dart';
+import 'package:flutter_sing_tools/pages/pitch_detector/pitch_detector_page.dart';
 import 'package:flutter_sing_tools/pages/recorder_page.dart';
 import 'package:flutter_sing_tools/pages/volume_detect_page.dart';
 import 'package:flutter_sing_tools/widgets/widgets.dart';
@@ -26,6 +27,10 @@ class MyHomePage extends StatelessWidget {
                 print('Recorded file path: $path');
               },
             ),
+          ),
+          MyButton(
+            text: '音高檢測',
+            page: PitchDetectorPage(),
           ),
           MyButton(
             text: '節拍器',
