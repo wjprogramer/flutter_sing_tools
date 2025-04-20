@@ -1,4 +1,8 @@
+import 'dart:async';
+
+import 'package:bloc/bloc.dart';
 import 'package:buffered_list_stream/buffered_list_stream.dart';
+import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pitch_detector_dart/pitch_detector.dart';
@@ -6,35 +10,30 @@ import 'package:pitchupdart/pitch_handler.dart';
 import 'package:pitchupdart/tuning_status.dart';
 import 'package:record/record.dart';
 
-import 'tunning_state.dart';
+part 'pitch_event.dart';
+part 'pitch_state.dart';
 
-class PitchCubit extends Cubit<TuningState> {
-  PitchCubit(this._audioRecorder, this._pitchDetectorDart, this._pitchupDart)
-      : super(TuningState(note: "N/A", status: "Play something")) {
+class PitchBloc extends Bloc<PitchEvent, PitchState> {
+  PitchBloc(this._audioRecorder, this._pitchDetectorDart, this._pitchupDart) : super(PitchState.empty()) {
     _init();
+
+    on<PitchEvent>((event, emit) {
+    });
   }
 
   final AudioRecorder _audioRecorder;
+  VoidCallback? _disposer;
+
   final PitchDetector _pitchDetectorDart;
   final PitchHandler _pitchupDart;
 
-  late VoidCallback _disposer;
-  final double _minVolume = -45.0;
-
-  _init() async {
+  void _init() async {
     final recordStream = await _audioRecorder.startStream(const RecordConfig(
       encoder: AudioEncoder.pcm16bits,
       numChannels: 1,
       bitRate: 128000,
       sampleRate: PitchDetector.DEFAULT_SAMPLE_RATE,
     ));
-
-    _audioRecorder
-        .onAmplitudeChanged(const Duration(milliseconds: 300))
-        .listen((amp) {
-      final volume = (amp.current - _minVolume) / _minVolume;
-      print('volume $volume');
-    });
 
     var audioSampleBufferedStream = bufferedListStream(
       recordStream.map((event) {
@@ -54,7 +53,7 @@ class PitchCubit extends Cubit<TuningState> {
       _pitchDetectorDart.getPitchFromIntBuffer(intBuffer).then((detectedPitch) {
         if (detectedPitch.pitched) {
           _pitchupDart.handlePitch(detectedPitch.pitch).then((pitchResult) {
-            return emit(TuningState(
+            return emit(PitchState(
               note: pitchResult.note,
               status: pitchResult.tuningStatus.getDescription(),
             ));
@@ -66,18 +65,18 @@ class PitchCubit extends Cubit<TuningState> {
 
   @override
   Future<void> close() {
-    _disposer.call();
+    _disposer?.call();
     return super.close();
   }
 }
 
 extension Description on TuningStatus {
   String getDescription() => switch (this) {
-        TuningStatus.tuned => "Tuned",
-        TuningStatus.toolow => "Too low. Tighten the string",
-        TuningStatus.toohigh => "Too hig. Give it some slack",
-        TuningStatus.waytoolow => "Way too low. Tighten the string",
-        TuningStatus.waytoohigh => "Way to high. Give it some slack",
-        TuningStatus.undefined => "Note is not in the valid interval.",
-      };
+    TuningStatus.tuned => "Tuned",
+    TuningStatus.toolow => "Too low. Tighten the string",
+    TuningStatus.toohigh => "Too hig. Give it some slack",
+    TuningStatus.waytoolow => "Way too low. Tighten the string",
+    TuningStatus.waytoohigh => "Way to high. Give it some slack",
+    TuningStatus.undefined => "Note is not in the valid interval.",
+  };
 }

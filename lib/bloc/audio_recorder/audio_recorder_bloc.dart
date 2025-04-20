@@ -11,7 +11,7 @@ part 'audio_recorder_state.dart';
 
 /// 控制 audio_recorder
 class AudioRecorderBloc extends Bloc<AudioRecorderEvent, AudioRecorderState> {
-  AudioRecorderBloc() : super(AudioRecorderState()) {
+  AudioRecorderBloc(this._audioRecorder) : super(AudioRecorderState()) {
     _init();
 
     on<AudioRecorderEvent>((event, emit) => switch (event) {
@@ -30,8 +30,6 @@ class AudioRecorderBloc extends Bloc<AudioRecorderEvent, AudioRecorderState> {
   StreamSubscription<RecordState>? _recordSub;
 
   void _init() async {
-    _audioRecorder = AudioRecorder();
-
     _recordSub = _audioRecorder.onStateChanged().listen((recordState) {
       add(AudioRecorderUpdate(
         recordState: recordState,

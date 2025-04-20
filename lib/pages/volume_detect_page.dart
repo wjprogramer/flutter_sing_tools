@@ -11,7 +11,6 @@ import 'package:record/record.dart';
 
 import '../bloc/audio_recorder/audio_recorder_bloc.dart';
 
-
 class VolumeDetectPage extends StatelessWidget {
   const VolumeDetectPage({super.key});
 
@@ -19,12 +18,17 @@ class VolumeDetectPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider(create: (context) => AudioRecorderBloc()),
+        RepositoryProvider<AudioRecorder>(
+          create: (context) => AudioRecorder(),
+        ),
       ],
       child: MultiBlocProvider(
         providers: [
+          BlocProvider(create: (context) => AudioRecorderBloc(
+            context.read<AudioRecorder>(),
+          )),
           BlocProvider(create: (context) => VolumeBloc(
-            context.read<AudioRecorderBloc>().audioRecorder,
+            context.read<AudioRecorder>(),
           )),
         ],
         child: Builder(
