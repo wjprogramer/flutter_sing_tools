@@ -39,8 +39,8 @@ class _VolumeDetectPageState extends State<VolumeDetectPage> with AudioRecorderM
   StreamSubscription<Amplitude>? _amplitudeSub;
   Amplitude? _amplitude;
   double _volume = 0.0;
-  double minVolume = -45.0;
-  List<FlSpot> _volumePoints = [];
+  final double _minVolume = -45.0;
+  final List<FlSpot> _volumePoints = [];
   int _elapsedMilliseconds = 0;
 
   @override
@@ -56,7 +56,7 @@ class _VolumeDetectPageState extends State<VolumeDetectPage> with AudioRecorderM
         .listen((amp) {
       _amplitude = amp;
       // if (amp.current > minVolume) {
-      _volume = (amp.current - minVolume) / minVolume;
+      _volume = (amp.current - _minVolume) / _minVolume;
       // }
       setState(() {});
     });

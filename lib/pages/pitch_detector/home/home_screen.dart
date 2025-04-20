@@ -23,9 +23,10 @@ class HomeScreen extends StatelessWidget {
             Text(
               pitchCubitState.note,
               style: const TextStyle(
-                  color: Colors.black87,
-                  fontSize: 65.0,
-                  fontWeight: FontWeight.bold),
+                color: Colors.black87,
+                fontSize: 65.0,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             Text(
               pitchCubitState.status,

@@ -20,6 +20,9 @@ class PitchCubit extends Cubit<TuningState> {
   final PitchDetector _pitchDetectorDart;
   final PitchHandler _pitchupDart;
 
+  late VoidCallback _disposer;
+  final double _minVolume = -45.0;
+
   _init() async {
     final recordStream = await _audioRecorder.startStream(const RecordConfig(
       encoder: AudioEncoder.pcm16bits,
@@ -27,6 +30,13 @@ class PitchCubit extends Cubit<TuningState> {
       bitRate: 128000,
       sampleRate: PitchDetector.DEFAULT_SAMPLE_RATE,
     ));
+
+    _audioRecorder
+        .onAmplitudeChanged(const Duration(milliseconds: 300))
+        .listen((amp) {
+      final volume = (amp.current - _minVolume) / _minVolume;
+      print('volume $volume');
+    });
 
     var audioSampleBufferedStream = bufferedListStream(
       recordStream.map((event) {
@@ -36,20 +46,30 @@ class PitchCubit extends Cubit<TuningState> {
       PitchDetector.DEFAULT_BUFFER_SIZE * 2,
     );
 
+    _disposer = () {
+      _audioRecorder.stop();
+    };
+
     await for (var audioSample in audioSampleBufferedStream) {
       final intBuffer = Uint8List.fromList(audioSample);
 
       _pitchDetectorDart.getPitchFromIntBuffer(intBuffer).then((detectedPitch) {
         if (detectedPitch.pitched) {
-          _pitchupDart.handlePitch(detectedPitch.pitch).then((pitchResult) => {
-                emit(TuningState(
-                  note: pitchResult.note,
-                  status: pitchResult.tuningStatus.getDescription(),
-                ))
-              });
+          _pitchupDart.handlePitch(detectedPitch.pitch).then((pitchResult) {
+            return emit(TuningState(
+              note: pitchResult.note,
+              status: pitchResult.tuningStatus.getDescription(),
+            ));
+          });
         }
       });
     }
+  }
+
+  @override
+  Future<void> close() {
+    _disposer.call();
+    return super.close();
   }
 }
 

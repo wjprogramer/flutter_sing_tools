@@ -7,6 +7,8 @@ import 'package:flutter_sing_tools/pages/recorder_page.dart';
 import 'package:flutter_sing_tools/pages/volume_detect_page.dart';
 import 'package:flutter_sing_tools/widgets/widgets.dart';
 
+import 'audio_detector/audio_detector_page.dart';
+
 class MyHomePage extends StatelessWidget {
   const MyHomePage({super.key});
 
@@ -21,6 +23,11 @@ class MyHomePage extends StatelessWidget {
         children: [
           MyTitle('一般'),
           MyButton(
+            text: '節拍器',
+            page: MetronomePage(),
+          ),
+          MyTitle('聲音檢測'),
+          MyButton(
             text: '音量偵測',
             page: VolumeDetectPage(
               onStop: (path) {
@@ -33,8 +40,8 @@ class MyHomePage extends StatelessWidget {
             page: PitchDetectorPage(),
           ),
           MyButton(
-            text: '節拍器',
-            page: MetronomePage(),
+            text: '聲音檢測 (綜合)',
+            page: AudioDetectorPage(),
           ),
           MyTitle('重播'),
           MyButton(
