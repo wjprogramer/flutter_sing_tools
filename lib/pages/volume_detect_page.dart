@@ -3,13 +3,12 @@ import 'dart:async';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_sing_tools/bloc/audio_recorder/audio_recorder_bloc.dart';
 import 'package:flutter_sing_tools/bloc/audio_recorder/widgets/status_listener.dart';
 import 'package:flutter_sing_tools/bloc/volume/volume_bloc.dart';
 import 'package:flutter_sing_tools/utilities/audio_recorder/audio_recorder_io.dart';
 import 'package:flutter_sing_tools/widgets/audio/graph/audio_graph.dart';
 import 'package:record/record.dart';
-
-import '../bloc/audio_recorder/audio_recorder_bloc.dart';
 
 class VolumeDetectPage extends StatelessWidget {
   const VolumeDetectPage({super.key});
@@ -24,12 +23,16 @@ class VolumeDetectPage extends StatelessWidget {
       ],
       child: MultiBlocProvider(
         providers: [
-          BlocProvider(create: (context) => AudioRecorderBloc(
-            context.read<AudioRecorder>(),
-          )),
-          BlocProvider(create: (context) => VolumeBloc(
-            context.read<AudioRecorder>(),
-          )),
+          BlocProvider(
+            create: (context) => AudioRecorderBloc(
+              context.read<AudioRecorder>(),
+            ),
+          ),
+          BlocProvider(
+            create: (context) => VolumeBloc(
+              context.read<AudioRecorder>(),
+            ),
+          ),
         ],
         child: Builder(
           builder: (context) {
@@ -40,7 +43,7 @@ class VolumeDetectPage extends StatelessWidget {
               audioRecorderBloc: bloc,
               volumeBloc: volumeBloc,
             );
-          }
+          },
         ),
       ),
     );
@@ -64,15 +67,19 @@ class _VolumeDetectPage extends StatefulWidget {
   State<_VolumeDetectPage> createState() => _VolumeDetectPageState();
 }
 
-class _VolumeDetectPageState extends State<_VolumeDetectPage> with AudioRecorderMixin {
+class _VolumeDetectPageState extends State<_VolumeDetectPage>
+    with AudioRecorderMixin {
   AudioRecorderBloc get _recorderBloc => widget.audioRecorderBloc;
+
   RecordState get _recordState => _recorderBloc.state.recordState;
+
   AudioRecorder get _audioRecorder => _recorderBloc.audioRecorder;
 
   Timer? _timer;
   int _recordDurationInMilliseconds = 0;
   final List<FlSpot> _volumePoints = [];
   int _elapsedMilliseconds = 0;
+
   Duration get _graphSampleDuration => AudioGraph.graphSampleDuration;
 
   @override
@@ -86,23 +93,21 @@ class _VolumeDetectPageState extends State<_VolumeDetectPage> with AudioRecorder
   }
 
   void _start() => _recorderBloc.add(AudioRecorderStart(
-    onPreStart: (config) async {
-      // Record to file
-      await recordFile(_audioRecorder, config);
+        onPreStart: (config) async {
+          // Record to file
+          await recordFile(_audioRecorder, config);
 
-      _recordDurationInMilliseconds = 0;
+          _recordDurationInMilliseconds = 0;
 
-      // Record to stream
-      // await recordStream(_audioRecorder, config);
-    },
-  ));
+          // Record to stream
+          // await recordStream(_audioRecorder, config);
+        },
+      ));
 
   void _stop() {
-    _recorderBloc.add(AudioRecorderStop(
-      onStop: (path) {
-        downloadWebData(path);
-      }
-    ));
+    _recorderBloc.add(AudioRecorderStop(onStop: (path) {
+      downloadWebData(path);
+    }));
   }
 
   void _pause() => _recorderBloc.add(const AudioRecorderPause());
@@ -120,7 +125,9 @@ class _VolumeDetectPageState extends State<_VolumeDetectPage> with AudioRecorder
       _elapsedMilliseconds += _graphSampleDuration.inMilliseconds;
       _volumePoints.add(FlSpot(
         _elapsedMilliseconds / _graphSampleDuration.inMilliseconds,
-        volume0to(volume, 100).clamp(0.0, AudioGraph.maxVolume).toDouble(), // 確保在合法範圍
+        volume0to(volume, 100)
+            .clamp(0.0, AudioGraph.maxVolume)
+            .toDouble(), // 確保在合法範圍
       ));
       final int skip = _volumePoints.length - AudioGraph.maxGraphCount;
       if (skip > 0) {

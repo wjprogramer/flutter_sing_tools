@@ -54,7 +54,7 @@ class _Page extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Pitchup sample- Guitar tuner"),
+        title: const Text("PitchUp sample- Guitar tuner"),
       ),
       body: Center(
         child: Column(
