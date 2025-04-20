@@ -59,8 +59,6 @@ class AudioGraphBloc extends Bloc<AudioGraphEvent, AudioGraphState> {
 
       add(AudioGraphUpdate(
         volumePoints: volumePoints,
-        recordDurationInMilliseconds: state.recordDurationInMilliseconds +
-            _graphSampleDuration.inMilliseconds,
         recordDuration: state.recordDuration + _graphSampleDuration,
       ));
     });
@@ -69,7 +67,6 @@ class AudioGraphBloc extends Bloc<AudioGraphEvent, AudioGraphState> {
   void _update(AudioGraphUpdate event, Emitter<AudioGraphState> emit) {
     emit(state.copyWith(
       volumePoints: _volumePoints,
-      recordDurationInMilliseconds: event.recordDurationInMilliseconds,
       recordDuration: event.recordDuration,
     ));
   }
@@ -86,7 +83,6 @@ class AudioGraphBloc extends Bloc<AudioGraphEvent, AudioGraphState> {
 
   void _onClear(AudioGraphClear event, Emitter<AudioGraphState> emit) {
     emit(state.copyWith(
-      recordDurationInMilliseconds: 0,
       recordDuration: const Duration(),
     ));
   }
