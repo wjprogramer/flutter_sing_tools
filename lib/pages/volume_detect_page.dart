@@ -1,13 +1,12 @@
-import 'dart:async';
-
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_sing_tools/bloc/audio_recorder/audio_recorder_bloc.dart';
 import 'package:flutter_sing_tools/bloc/audio_recorder/widgets/status_listener.dart';
 import 'package:flutter_sing_tools/bloc/volume/volume_bloc.dart';
 import 'package:flutter_sing_tools/utilities/audio_recorder/audio_recorder_io.dart';
+import 'package:flutter_sing_tools/utilities/utilities.dart';
 import 'package:flutter_sing_tools/widgets/audio/graph/audio_graph.dart';
+import 'package:flutter_sing_tools/widgets/audio/graph/bloc/audio_graph_bloc.dart';
 import 'package:record/record.dart';
 
 class VolumeDetectPage extends StatelessWidget {
@@ -32,6 +31,9 @@ class VolumeDetectPage extends StatelessWidget {
             create: (context) => VolumeBloc(
               context.read<AudioRecorder>(),
             ),
+          ),
+          BlocProvider(
+            create: (context) => AudioGraphBloc(),
           ),
         ],
         child: Builder(
@@ -75,29 +77,12 @@ class _VolumeDetectPageState extends State<_VolumeDetectPage>
 
   AudioRecorder get _audioRecorder => _recorderBloc.audioRecorder;
 
-  Timer? _timer;
-  int _recordDurationInMilliseconds = 0;
-  final List<FlSpot> _volumePoints = [];
-  int _elapsedMilliseconds = 0;
-
-  Duration get _graphSampleDuration => AudioGraph.graphSampleDuration;
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  int volume0to(double volume, int maxVolumeToDisplay) {
-    return (volume * maxVolumeToDisplay).round().abs();
-  }
-
   void _start() => _recorderBloc.add(AudioRecorderStart(
         onPreStart: (config) async {
+          context.read<AudioGraphBloc>().add(AudioGraphClear());
+
           // Record to file
           await recordFile(_audioRecorder, config);
-
-          _recordDurationInMilliseconds = 0;
 
           // Record to stream
           // await recordStream(_audioRecorder, config);
@@ -114,26 +99,27 @@ class _VolumeDetectPageState extends State<_VolumeDetectPage>
 
   void _resume() => _recorderBloc.add(const AudioRecorderResume());
 
-  void _startTimer() {
-    _timer?.cancel();
-
-    _timer = Timer.periodic(_graphSampleDuration, (Timer t) {
-      final volumeBloc = context.read<VolumeBloc>();
-      final volume = volumeBloc.state.volume;
-
-      _recordDurationInMilliseconds += _graphSampleDuration.inMilliseconds;
-      _elapsedMilliseconds += _graphSampleDuration.inMilliseconds;
-      _volumePoints.add(FlSpot(
-        _elapsedMilliseconds / _graphSampleDuration.inMilliseconds,
-        volume0to(volume, 100)
-            .clamp(0.0, AudioGraph.maxVolume)
-            .toDouble(), // 確保在合法範圍
-      ));
-      final int skip = _volumePoints.length - AudioGraph.maxGraphCount;
-      if (skip > 0) {
-        _volumePoints.removeRange(0, skip);
-      }
-    });
+  void _listenRecorderStatus(BuildContext context, RecordState status) {
+    final audioGraphBloc = context.read<AudioGraphBloc>();
+    switch (status) {
+      case RecordState.pause:
+        audioGraphBloc.add(AudioGraphPause());
+        break;
+      case RecordState.record:
+        audioGraphBloc.add(
+          AudioGraphStartRecording(
+            getLatestVolume: () {
+              final volumeBloc = context.read<VolumeBloc>();
+              final volume = volumeBloc.state.volume;
+              return volume;
+            },
+          ),
+        );
+        break;
+      case RecordState.stop:
+        audioGraphBloc.add(AudioGraphStop());
+        break;
+    }
   }
 
   @override
@@ -142,21 +128,11 @@ class _VolumeDetectPageState extends State<_VolumeDetectPage>
     final amplitude = volumeBloc.state.amplitude;
     final volume = volumeBloc.state.volume;
 
+    final audioGraphBloc = context.watch<AudioGraphBloc>();
+    final volumePoints = audioGraphBloc.state.volumePoints;
+
     return AudioRecorderStatusListener(
-      listener: (context, status) {
-        switch (status) {
-          case RecordState.pause:
-            _timer?.cancel();
-            break;
-          case RecordState.record:
-            _startTimer();
-            break;
-          case RecordState.stop:
-            _timer?.cancel();
-            _recordDurationInMilliseconds = 0;
-            break;
-        }
-      },
+      listener: _listenRecorderStatus,
       child: Scaffold(
         appBar: AppBar(title: Text('Volume Detect')),
         body: Column(
@@ -175,12 +151,12 @@ class _VolumeDetectPageState extends State<_VolumeDetectPage>
             if (amplitude != null) ...[
               const SizedBox(height: 40),
               Text('Current: ${amplitude.current}'),
-              Text('Volume: ${volume0to(volume, 100)}'),
+              Text('Volume: ${Formatter.volume0to(volume, 100)}'),
               Text('Max: ${amplitude.max}'),
-              if (_volumePoints.isNotEmpty) ...[
+              if (volumePoints.isNotEmpty) ...[
                 const SizedBox(height: 32),
                 AudioGraph(
-                  volumePoints: _volumePoints,
+                  volumePoints: volumePoints,
                 ),
               ],
             ],
@@ -248,28 +224,13 @@ class _VolumeDetectPageState extends State<_VolumeDetectPage>
 
   Widget _buildText() {
     if (_recordState != RecordState.stop) {
-      return _buildTimer();
+      final recordDuration = context.read<AudioGraphBloc>().state.recordDuration;
+      return Text(
+        DisplayText.formatMinuteAndSeconds(recordDuration),
+        style: const TextStyle(color: Colors.red),
+      );
     }
 
     return const Text("Waiting to record");
-  }
-
-  Widget _buildTimer() {
-    final String minutes = _formatNumber(_recordDurationInMilliseconds ~/ 60);
-    final String seconds = _formatNumber(_recordDurationInMilliseconds % 60);
-
-    return Text(
-      '$minutes : $seconds',
-      style: const TextStyle(color: Colors.red),
-    );
-  }
-
-  String _formatNumber(int number) {
-    String numberStr = number.toString();
-    if (number < 10) {
-      numberStr = '0$numberStr';
-    }
-
-    return numberStr;
   }
 }
