@@ -1,3 +1,4 @@
+export 'assets.dart';
 export 'display_text.dart';
 export 'formatter.dart';
 export 'io/io.dart';

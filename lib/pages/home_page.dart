@@ -4,6 +4,7 @@ import 'package:flutter_sing_tools/pages/metronome_page.dart';
 import 'package:flutter_sing_tools/pages/monitor_playback_page.dart';
 import 'package:flutter_sing_tools/pages/pitch_detector/pitch_detector_page.dart';
 import 'package:flutter_sing_tools/pages/recorder_page.dart';
+import 'package:flutter_sing_tools/pages/tuning_fork/tuning_fork_page.dart';
 import 'package:flutter_sing_tools/pages/volume_detect_page.dart';
 import 'package:flutter_sing_tools/widgets/widgets.dart';
 
@@ -22,6 +23,10 @@ class MyHomePage extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           MyTitle('一般'),
+          MyButton(
+            text: '音叉 (電子振盪器)',
+            page: TuningForkPage(),
+          ),
           MyButton(
             text: '節拍器',
             page: MetronomePage(),
