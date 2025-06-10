@@ -29,11 +29,19 @@
   let oscillator;
   let gainNode;
 
+  let configs = {
+    // 是否要自然衰減
+    'gain_envelope': false,
+    // 幾秒漸弱
+    'gain_envelope_time_in_seconds': 5,
+  };
+
   function play() {
     if (oscillator) {
       stop();
     }
 
+    const now = context.currentTime;
     const frequency = document.getElementById('freq').value;
     const volume = document.getElementById('volume').value;
 
@@ -43,7 +51,10 @@
     oscillator.type = 'sine';
     oscillator.frequency.setValueAtTime(frequency, context.currentTime);
 
-    gainNode.gain.setValueAtTime(volume, context.currentTime);
+    gainNode.gain.setValueAtTime(volume, now);
+    if (configs['gain_envelope']) {
+      gainNode.gain.exponentialRampToValueAtTime(0.001, now + configs['gain_envelope_time_in_seconds']);
+    }
 
     // 聲音路徑：oscillator → gain → destination
     oscillator.connect(gainNode).connect(context.destination);
