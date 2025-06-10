@@ -12,3 +12,13 @@ class PitchUpdate extends PitchEvent {
   @override
   List<Object?> get props => [result];
 }
+
+class PitchStart extends PitchEvent {
+  const PitchStart(this.audioSampleBufferedStream);
+
+  final Stream<List<int>> audioSampleBufferedStream;
+
+  @override
+  List<Object?> get props => [audioSampleBufferedStream];
+}
+

@@ -3,27 +3,31 @@ import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_sing_tools/bloc/audio_recorder/audio_recorder_bloc.dart';
+import 'package:flutter_sing_tools/bloc/pitch/pitch_bloc.dart';
 import 'package:flutter_sing_tools/bloc/volume/volume_bloc.dart';
 
 const Duration _graphBottomIntervalDuration = Duration(seconds: 5);
 
-const Duration _graphSampleDuration = Duration(milliseconds: 5);
+const Duration _graphSampleDuration = Duration(milliseconds: 1);
 
-const int _maxGraphCount = 1600;
+const int _maxGraphCount = 3200;
 
 const double _maxVolume = 120;
 
-/// 目前只用在音量，之後可以採用不同數據 (例如: 音高等)，依據需求傳入
+/// 目前用在音量、音高，之後可以採用不同數據 ，依據需求傳入
 ///
 /// Required bloc: [AudioRecorderBloc]
-/// Optional bloc (根據參數決定): [VolumeBloc]
+/// Optional bloc (根據參數決定): [VolumeBloc], [PitchBloc]
 class AudioGraph extends StatefulWidget {
   const AudioGraph({
     super.key,
     required this.volumePoints,
+    this.pitchPoints = const [],
   });
 
   final List<FlSpot> volumePoints;
+
+  final List<FlSpot> pitchPoints;
 
   static const Duration graphSampleDuration = _graphSampleDuration;
 
@@ -38,10 +42,19 @@ class AudioGraph extends StatefulWidget {
 class _AudioGraphState extends State<AudioGraph> {
   List<FlSpot> get _volumePoints => widget.volumePoints;
 
+  List<FlSpot> get _pitchPoints => widget.pitchPoints;
+
   @override
   Widget build(BuildContext context) {
     final bottomInterval = _graphBottomIntervalDuration.inMilliseconds ~/
         _graphSampleDuration.inMilliseconds;
+    final firstPoint = _volumePoints.firstOrNull ?? _pitchPoints.firstOrNull;
+    final lastPoint = _volumePoints.lastOrNull ?? _pitchPoints.lastOrNull;
+    final minX = firstPoint?.x ?? 0;
+    final maxX = math.max(
+      (lastPoint?.x ?? 0) + 5,
+      _maxGraphCount.toDouble(),
+    );
 
     return Padding(
       padding: const EdgeInsets.all(8.0),
@@ -49,11 +62,8 @@ class _AudioGraphState extends State<AudioGraph> {
         height: 200,
         child: LineChart(
           LineChartData(
-            minX: _volumePoints.firstOrNull?.x ?? 0,
-            maxX: math.max(
-              (_volumePoints.lastOrNull?.x ?? 0) + 5,
-              _maxGraphCount.toDouble(),
-            ),
+            minX: minX,
+            maxX: maxX,
             minY: 0,
             maxY: _maxVolume,
             lineBarsData: [
@@ -64,6 +74,14 @@ class _AudioGraphState extends State<AudioGraph> {
                 belowBarData: BarAreaData(show: false),
                 dotData: FlDotData(show: false),
               ),
+              if (_pitchPoints.isNotEmpty)
+                LineChartBarData(
+                  spots: _pitchPoints,
+                  isCurved: true,
+                  color: Colors.red,
+                  belowBarData: BarAreaData(show: false),
+                  dotData: FlDotData(show: false),
+                ),
             ],
             titlesData: FlTitlesData(
               leftTitles: AxisTitles(

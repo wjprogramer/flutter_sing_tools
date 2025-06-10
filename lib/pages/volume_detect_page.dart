@@ -80,12 +80,6 @@ class _VolumeDetectPageState extends State<_VolumeDetectPage>
   void _start() => _recorderBloc.add(AudioRecorderStart(
         onPreStart: (config) async {
           context.read<AudioGraphBloc>().add(AudioGraphClear());
-
-          // Record to file
-          await recordFile(_audioRecorder, config);
-
-          // Record to stream
-          // await recordStream(_audioRecorder, config);
         },
       ));
 

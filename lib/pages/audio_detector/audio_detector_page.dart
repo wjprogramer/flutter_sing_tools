@@ -30,6 +30,12 @@ class AudioDetectorPage extends StatelessWidget {
         RepositoryProvider<AudioRecorder>(
           create: (context) => AudioRecorder(),
         ),
+        RepositoryProvider<PitchDetector>(
+          create: (context) => PitchDetector(),
+        ),
+        RepositoryProvider<PitchHandler>(
+          create: (context) => PitchHandler(InstrumentType.guitar),
+        ),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -41,6 +47,13 @@ class AudioDetectorPage extends StatelessWidget {
           BlocProvider(
             create: (context) => VolumeBloc(
               context.read<AudioRecorder>(),
+            ),
+          ),
+          BlocProvider(
+            create: (context) => PitchBloc(
+              context.read<AudioRecorder>(),
+              context.read<PitchDetector>(),
+              context.read<PitchHandler>(),
             ),
           ),
           BlocProvider(
@@ -70,7 +83,7 @@ class _PageState extends State<_Page> with AudioRecorderMixin {
   void _start() => _recorderBloc.add(AudioRecorderStart(
         onPreStart: (config) async {
           context.read<AudioGraphBloc>().add(AudioGraphClear());
-          await recordFile(_audioRecorder, config);
+          // await recordFile(_audioRecorder, config);
         },
       ));
 
@@ -85,18 +98,29 @@ class _PageState extends State<_Page> with AudioRecorderMixin {
   void _resume() => _recorderBloc.add(const AudioRecorderResume());
 
   void _listenRecorderStatus(BuildContext context, RecordState status) {
+    final recorderBloc = context.read<AudioRecorderBloc>();
     final audioGraphBloc = context.read<AudioGraphBloc>();
+
     switch (status) {
       case RecordState.pause:
         audioGraphBloc.add(AudioGraphPause());
         break;
       case RecordState.record:
+        final pitchBloc = context.read<PitchBloc>();
+
+        if (recorderBloc.audioSampleBufferedStream != null) {
+          pitchBloc.add(PitchStart(recorderBloc.audioSampleBufferedStream!));
+        }
+
         audioGraphBloc.add(
           AudioGraphStartRecording(
             getLatestVolume: () {
               final volumeBloc = context.read<VolumeBloc>();
               final volume = volumeBloc.state.volume;
               return volume;
+            },
+            getLatestPitchState: () {
+              return pitchBloc.state;
             },
           ),
         );
@@ -178,12 +202,15 @@ class _PageState extends State<_Page> with AudioRecorderMixin {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<AudioRecorderBloc>();
+
     final volumeBloc = context.watch<VolumeBloc>();
     final amplitude = volumeBloc.state.amplitude;
     final volume = volumeBloc.state.volume;
 
     final audioGraphBloc = context.watch<AudioGraphBloc>();
     final volumePoints = audioGraphBloc.state.volumePoints;
+    final pitchPoints = audioGraphBloc.state.pitchPoints;
 
     return AudioRecorderStatusListener(
       listener: _listenRecorderStatus,
@@ -206,10 +233,11 @@ class _PageState extends State<_Page> with AudioRecorderMixin {
               Text('Current: ${amplitude.current}'),
               Text('Volume: ${Formatter.volume0to(volume, 100)}'),
               Text('Max: ${amplitude.max}'),
-              if (volumePoints.isNotEmpty) ...[
+              if (volumePoints.isNotEmpty || pitchPoints.isNotEmpty) ...[
                 const SizedBox(height: 32),
                 AudioGraph(
                   volumePoints: volumePoints,
+                  pitchPoints: pitchPoints,
                 ),
               ],
             ],

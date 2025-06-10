@@ -20,32 +20,25 @@ class PitchBloc extends Bloc<PitchEvent, PitchState> {
     _init();
 
     on<PitchEvent>((event, emit) => switch (event) {
+      PitchStart() => _start(event, emit),
       PitchUpdate() => _onUpdate(event, emit),
     });
   }
 
   final AudioRecorder _audioRecorder;
-  VoidCallback? _disposer;
+  VoidCallback? _disposePrePlayerState;
 
   final PitchDetector _pitchDetectorDart;
   final PitchHandler _pitchupDart;
 
   void _init() async {
-    final recordStream = await _audioRecorder.startStream(const RecordConfig(
-      encoder: AudioEncoder.pcm16bits,
-      numChannels: 1,
-      bitRate: 128000,
-      sampleRate: PitchDetector.DEFAULT_SAMPLE_RATE,
-    ));
 
-    var audioSampleBufferedStream = bufferedListStream(
-      recordStream.map((event) {
-        return event.toList();
-      }),
-      // The library converts a PCM16 to 8bits internally. So we need twice as many bytes
-      PitchDetector.DEFAULT_BUFFER_SIZE * 2,
-    );
+  }
 
+  void _start(PitchStart event, Emitter<PitchState> emit) async {
+    _disposePrePlayerState?.call();
+
+    final audioSampleBufferedStream = event.audioSampleBufferedStream;
     final audioSampleBufferedStreamSubscription = audioSampleBufferedStream.listen((audioSample) {
       final intBuffer = Uint8List.fromList(audioSample);
 
@@ -58,14 +51,14 @@ class PitchBloc extends Bloc<PitchEvent, PitchState> {
       });
     });
 
-    _disposer = () {
+    _disposePrePlayerState = () {
       audioSampleBufferedStreamSubscription.cancel();
     };
   }
 
   @override
   Future<void> close() {
-    _disposer?.call();
+    _disposePrePlayerState?.call();
     return super.close();
   }
 

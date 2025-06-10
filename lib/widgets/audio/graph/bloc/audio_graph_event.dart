@@ -7,11 +7,14 @@ sealed class AudioGraphEvent extends Equatable {
 class AudioGraphUpdate extends AudioGraphEvent {
   const AudioGraphUpdate({
     this.volumePoints,
+    this.pitchPoints,
     this.recordDurationInMilliseconds,
     this.recordDuration,
   });
 
   final List<FlSpot>? volumePoints;
+
+  final List<FlSpot>? pitchPoints;
 
   final int? recordDurationInMilliseconds;
 
@@ -20,6 +23,7 @@ class AudioGraphUpdate extends AudioGraphEvent {
   @override
   List<Object?> get props => [
         volumePoints,
+        pitchPoints,
         recordDurationInMilliseconds,
         recordDuration,
       ];
