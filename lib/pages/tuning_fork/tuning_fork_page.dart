@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_sing_tools/utilities/assets.dart';
 import 'package:gap/gap.dart';
+import 'package:rxdart/rxdart.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 /// Ref:
@@ -18,9 +19,9 @@ class TuningForkPage extends StatefulWidget {
 class _TuningForkPageState extends State<TuningForkPage> {
   late WebViewController _controller;
 
-  var _frequency = 440.0;
-  var _volume = 0.1;
-  _Waveform _waveform = _Waveform.sine;
+  final _frequency$ = BehaviorSubject.seeded(440.0);
+  final _volume$ = BehaviorSubject.seeded(0.1);
+  final _waveform$ = BehaviorSubject.seeded(_Waveform.sine);
 
   @override
   void initState() {
@@ -33,36 +34,41 @@ class _TuningForkPageState extends State<TuningForkPage> {
 
   @override
   void deactivate() {
-    _controller.runJavaScript("stop()");
+    _controller.runJavaScript('stop()');
     super.deactivate();
   }
 
+  @override
+  void dispose() {
+    _frequency$.close();
+    _volume$.close();
+    _waveform$.close();
+    super.dispose();
+  }
+
   Future<void> _setFrequency(double frequency) async {
-    frequency = frequency.clamp(100.0, 2000.0);
-    _frequency = frequency;
-    setState(() { });
-    await _controller.runJavaScript("setFrequency(${frequency.toInt()})");
+    final clamped = frequency.clamp(100.0, 2000.0);
+    _frequency$.add(clamped);
+    await _controller.runJavaScript('setFrequency(${clamped.toInt()})');
   }
 
   Future<void> _setVolume(double volume) async {
-    _volume = volume;
-    setState(() { });
-    await _controller.runJavaScript("setVolume(${volume.toStringAsFixed(2)})");
+    _volume$.add(volume);
+    await _controller.runJavaScript('setVolume(${volume.toStringAsFixed(2)})');
   }
 
   Future<void> _setWaveform(_Waveform? waveform) async {
-    if (waveform == null) return;
-    _waveform = waveform;
-    setState(() { });
+    if (waveform == null || waveform == _waveform$.value) return;
+    _waveform$.add(waveform);
     await _controller.runJavaScript("setWaveform('${waveform.code}')");
     await _play();
   }
 
   Future<void> _play() async {
     final options = {
-      'frequency': _frequency.toInt(),
-      'volume': _volume.toStringAsFixed(2),
-      'waveform': _waveform.code,
+      'frequency': _frequency$.value.toInt(),
+      'volume': _volume$.value.toStringAsFixed(2),
+      'waveform': _waveform$.value.code,
     };
     final optionsJson = jsonEncode(options);
     await _controller.runJavaScript("play($optionsJson)");
@@ -132,37 +138,64 @@ class _TuningForkPageState extends State<TuningForkPage> {
                 Expanded(
                   child: ListView(
                     children: [
-                      _Padding(
-                        child: _Title('# Volume: ${_volume.toStringAsFixed(2)}'),
-                      ),
-                      Slider(
-                        min: 0,
-                        max: 1,
-                        value: _volume,
-                        onChanged: (v) async {
-                          await _setVolume(v);
+                      StreamBuilder<double>(
+                        stream: _volume$,
+                        builder: (context, snapshot) {
+                          final value = snapshot.data ?? 0.1;
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _Padding(
+                                child: _Title('# Volume: ${value.toStringAsFixed(2)}'),
+                              ),
+                              Slider(
+                                min: 0,
+                                max: 1,
+                                value: value,
+                                onChanged: _setVolume,
+                              ),
+                            ],
+                          );
                         },
                       ),
                       _Padding(
                         child: _Title('# Waveform'),
                       ),
-                      _Padding(
-                        child: DropdownButton<_Waveform>(
-                          value: _waveform,
-                          items: _Waveform.values
-                              .map((type) => DropdownMenuItem(value: type, child: Text(type.displayName)))
-                              .toList(),
-                          onChanged: _setWaveform,
-                        ),
+                      StreamBuilder<_Waveform>(
+                        stream: _waveform$,
+                        builder: (context, snapshot) {
+                          final value = snapshot.data ?? _Waveform.sine;
+                          return _Padding(
+                            child: DropdownButton<_Waveform>(
+                              value: value,
+                              items: _Waveform.values.map((type) => DropdownMenuItem(
+                                value: type,
+                                child: Text(type.displayName),
+                              )).toList(),
+                              onChanged: _setWaveform,
+                            ),
+                          );
+                        },
                       ),
-                      _Padding(
-                        child: _Title('# Frequency: ${_frequency.toInt()} Hz'),
-                      ),
-                      Slider(
-                        min: 100,
-                        max: 2000,
-                        value: _frequency,
-                        onChanged: _setFrequency,
+                      StreamBuilder<double>(
+                        stream: _frequency$,
+                        builder: (context, snapshot) {
+                          final value = snapshot.data ?? 440.0;
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _Padding(
+                                child: _Title('# Frequency: ${value.toInt()} Hz'),
+                              ),
+                              Slider(
+                                min: 100,
+                                max: 2000,
+                                value: value,
+                                onChanged: _setFrequency,
+                              ),
+                            ],
+                          );
+                        },
                       ),
                       ...[-1, 1].map((sign) {
                         return SizedBox(
@@ -175,7 +208,10 @@ class _TuningForkPageState extends State<TuningForkPage> {
                                 padding: const EdgeInsets.symmetric(horizontal: 4),
                                 child: ElevatedButton(
                                   onPressed: () async {
-                                    await _setFrequency((_frequency + value * sign).toInt().toDouble());
+                                    final frequency = _frequency$.value;
+                                    final newFrequency = (frequency + value * sign).clamp(100.0, 2000.0)
+                                        .toInt().toDouble();
+                                    await _setFrequency(newFrequency);
                                   },
                                   child: Text(
                                     '${sign < 0 ? '－' : '＋'}$value',
