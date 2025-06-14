@@ -36,19 +36,19 @@
     'gain_envelope_time_in_seconds': 5,
   };
 
-  function play() {
+  function play(options) {
     if (oscillator) {
       stop();
     }
 
     const now = context.currentTime;
-    const frequency = document.getElementById('freq').value;
-    const volume = document.getElementById('volume').value;
+    const frequency = options?.frequency != undefined ? options.frequency : document.getElementById('freq').value;
+    const volume = options?.volume != undefined ? options.volume : document.getElementById('volume').value;
 
     oscillator = context.createOscillator();
     gainNode = context.createGain();
 
-    oscillator.type = 'sine';
+    oscillator.type = options?.waveform || 'sine';
     oscillator.frequency.setValueAtTime(frequency, context.currentTime);
 
     gainNode.gain.setValueAtTime(volume, now);
