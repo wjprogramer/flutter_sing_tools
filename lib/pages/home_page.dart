@@ -20,9 +20,13 @@ class MyHomePage extends StatelessWidget {
         title: Text('Singer'),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.only(
+          bottom: 24,
+          right: 16,
+          left: 16,
+        ),
         children: [
-          MyTitle('一般'),
+          FSTitle('一般'),
           MyButton(
             text: '音叉 (電子振盪器)',
             page: TuningForkPage(),
@@ -31,7 +35,7 @@ class MyHomePage extends StatelessWidget {
             text: '節拍器',
             page: MetronomePage(),
           ),
-          MyTitle('聲音檢測'),
+          FSTitle('聲音檢測'),
           MyButton(
             text: '音量偵測',
             page: VolumeDetectPage(),
@@ -44,7 +48,7 @@ class MyHomePage extends StatelessWidget {
             text: '聲音檢測 (綜合)',
             page: AudioDetectorPage(),
           ),
-          MyTitle('重播'),
+          FSTitle('重播'),
           MyButton(
             text: '錄音',
             page: RecorderPage(),
@@ -53,7 +57,7 @@ class MyHomePage extends StatelessWidget {
             text: '即時重播',
             page: MonitorPlaybackPage(),
           ),
-          MyTitle('其他'),
+          FSTitle('其他'),
           MyButton(
             text: '檔案瀏覽器',
             page: FilesExplorerPage(),

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_sing_tools/utilities/assets.dart';
+import 'package:flutter_sing_tools/widgets/widgets.dart';
 import 'package:gap/gap.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -145,8 +146,8 @@ class _TuningForkPageState extends State<TuningForkPage> {
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              _Padding(
-                                child: _Title('# Volume: ${value.toStringAsFixed(2)}'),
+                              FSPadding(
+                                child: FSTitle('# Volume: ${value.toStringAsFixed(2)}'),
                               ),
                               Slider(
                                 min: 0,
@@ -158,14 +159,14 @@ class _TuningForkPageState extends State<TuningForkPage> {
                           );
                         },
                       ),
-                      _Padding(
-                        child: _Title('# Waveform'),
+                      FSPadding(
+                        child: FSTitle('# Waveform'),
                       ),
                       StreamBuilder<_Waveform>(
                         stream: _waveform$,
                         builder: (context, snapshot) {
                           final value = snapshot.data ?? _Waveform.sine;
-                          return _Padding(
+                          return FSPadding(
                             child: DropdownButton<_Waveform>(
                               value: value,
                               items: _Waveform.values.map((type) => DropdownMenuItem(
@@ -184,8 +185,8 @@ class _TuningForkPageState extends State<TuningForkPage> {
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              _Padding(
-                                child: _Title('# Frequency: ${value.toInt()} Hz'),
+                              FSPadding(
+                                child: FSTitle('# Frequency: ${value.toInt()} Hz'),
                               ),
                               Slider(
                                 min: 100,
@@ -224,7 +225,7 @@ class _TuningForkPageState extends State<TuningForkPage> {
                         );
                       }),
                       Gap(24),
-                      _Padding(
+                      FSPadding(
                         child: Text('頻率，單位為赫茲。括號內為距離中央C（261.63赫茲）的半音距離。'),
                       ),
                       SingleChildScrollView(
@@ -288,45 +289,6 @@ enum _Waveform {
     _Waveform.triangle => 'triangle (三角波)',
     _Waveform.sawtooth => 'sawtooth (鋸齒波)',
   };
-}
-
-class _Title extends StatelessWidget {
-  const _Title(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(
-        top: 24,
-        bottom: 12,
-      ),
-      child: Text(
-        text,
-        style: theme.textTheme.titleMedium,
-      ),
-    );
-  }
-}
-
-class _Padding extends StatelessWidget {
-  const _Padding({
-    this.child,
-  });
-
-  final Widget? child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 24,
-      ),
-      child: child,
-    );
-  }
 }
 
 /// 音高頻率表
