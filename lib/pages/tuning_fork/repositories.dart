@@ -1,3 +1,5 @@
+import 'package:collection/collection.dart';
+
 import 'models.dart';
 
 class PitchFrequencyRepository {
@@ -47,8 +49,9 @@ class PitchFrequencyRepository {
 
     for (var i = 0; i < _notes.length; i++) {
       final List<FrequencyItem> octaveFrequencies = _frequencies[i];
-      final List<FrequencyItem> octaveItems = octaveFrequencies.map((item) {
-        return item.copyWith(note: _notes[i], octave: 0);
+      final List<FrequencyItem> octaveItems = octaveFrequencies.mapIndexed((colIndex, item) {
+        final octave = int.tryParse(_octaves[colIndex]) ?? 0;
+        return item.copyWith(note: _notes[i], octave: octave);
       }).toList();
       result.add(octaveItems);
     }
